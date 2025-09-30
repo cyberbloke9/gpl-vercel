@@ -37,10 +37,10 @@ interface ChecklistViewProps {
     id: string;
     title: string;
     description: string;
-    equipment: {
+    equipment?: {
       name: string;
       location: string;
-    };
+    } | null;
   };
   items: ChecklistItem[];
   onComplete: (results: Array<{
@@ -203,16 +203,18 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
           </Button>
           <div className="flex-1">
             <h1 className="font-bold text-lg">{checklist.title}</h1>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <FileText className="h-3 w-3" />
-                <span>{checklist.equipment.name}</span>
+            {checklist.equipment && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  <span>{checklist.equipment.name}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  <span>{checklist.equipment.location}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                <span>{checklist.equipment.location}</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 

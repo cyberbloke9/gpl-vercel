@@ -8,11 +8,11 @@ interface ChecklistCardProps {
   id: string;
   title: string;
   description: string;
-  equipment: {
+  equipment?: {
     name: string;
     location: string;
     qr_code: string;
-  };
+  } | null;
   frequency: string;
   onStart: () => void;
 }
@@ -48,14 +48,18 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FileText className="h-4 w-4" />
-            <span className="font-medium">{equipment.name}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            <span>{equipment.location}</span>
-          </div>
+          {equipment && (
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                <span className="font-medium">{equipment.name}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>{equipment.location}</span>
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span className="capitalize">{frequency} maintenance</span>

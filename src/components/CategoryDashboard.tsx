@@ -103,7 +103,8 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
 
   const handleStartChecklist = (category: string) => {
     const checklist = checklists.find(c => c.category === category);
-    if (checklist && categoryStatuses[category]?.unlocked) {
+    if (checklist) {
+      // Pass checklist as-is (category-based, no equipment reference)
       onStartChecklist(checklist);
     }
   };
