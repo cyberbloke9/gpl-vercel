@@ -1,0 +1,182 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface Checklist {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+}
+
+interface CategoryStatus {
+  unlocked: boolean;
+  completed: boolean;
+  unlockedAt?: string;
+  completedAt?: string;
+}
+
+interface CategoryDashboardProps {
+  onStartChecklist: (checklist: Checklist) => void;
+  onScanQR: () => void;
+}
+
+const CATEGORIES = [
+  { name: "Turbine System", icon: Activity, color: "text-primary" },
+  { name: "Oil Pressure Unit", icon: Droplet, color: "text-warning" },
+  { name: "Cooling System", icon: Wind, color: "text-info" },
+  { name: "Generator", icon: Zap, color: "text-success" },
+  { name: "Electrical Systems", icon: Shield, color: "text-secondary" },
+  { name: "Safety & General", icon: CheckCircle2, color: "text-muted-foreground" }
+];
+
+export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashboardProps) => {
+  const { user } = useAuth();
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [categoryStatuses, setCategoryStatuses] = useState<Record<string, CategoryStatus>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
+
+  const loadData = async () => {
+    try {
+      // Load all checklists
+      const { data: checklistsData, error: checklistsError } = await supabase
+        .from('checklists')
+        .select('*')
+        .order('title');
+
+      if (checklistsError) throw checklistsError;
+
+      const categorizedChecklists = (checklistsData || []).map(checklist => ({
+        ...checklist,
+        category: checklist.title.replace(' Checklist', '')
+      }));
+
+      setChecklists(categorizedChecklists);
+
+      // Load today's completion statuses
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data: completedData, error: completedError } = await supabase
+        .from('completed_checklists')
+        .select('checklist_id, category_unlocked_at, completed_at')
+        .eq('user_id', user?.id)
+        .gte('completed_at', today.toISOString());
+
+      if (completedError) throw completedError;
+
+      // Build status map
+      const statusMap: Record<string, CategoryStatus> = {};
+      CATEGORIES.forEach(cat => {
+        statusMap[cat.name] = { unlocked: false, completed: false };
+      });
+
+      categorizedChecklists.forEach(checklist => {
+        const completed = completedData?.find(c => c.checklist_id === checklist.id);
+        if (completed) {
+          statusMap[checklist.category] = {
+            unlocked: true,
+            completed: true,
+            unlockedAt: completed.category_unlocked_at,
+            completedAt: completed.completed_at
+          };
+        }
+      });
+
+      setCategoryStatuses(statusMap);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartChecklist = (category: string) => {
+    const checklist = checklists.find(c => c.category === category);
+    if (checklist && categoryStatuses[category]?.unlocked) {
+      onStartChecklist(checklist);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
+          <Button onClick={onScanQR} variant="industrial" size="mobile">
+            <QrCode className="mr-2 h-5 w-5" />
+            Scan Equipment QR
+          </Button>
+        </div>
+        <p className="text-muted-foreground">
+          Scan equipment QR codes to unlock and complete category checklists
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {CATEGORIES.map((category) => {
+          const Icon = category.icon;
+          const status = categoryStatuses[category.name] || { unlocked: false, completed: false };
+          const isLocked = !status.unlocked;
+          const isCompleted = status.completed;
+
+          return (
+            <Card 
+              key={category.name} 
+              className={`transition-all ${isCompleted ? 'border-success bg-success/5' : isLocked ? 'border-border opacity-60' : 'border-primary'}`}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <Icon className={`h-8 w-8 ${isCompleted ? 'text-success' : category.color}`} />
+                  {isLocked ? (
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  ) : isCompleted ? (
+                    <Badge variant="outline" className="bg-success/10 text-success border-success">
+                      ✓ Completed
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary">
+                      ✓ Unlocked
+                    </Badge>
+                  )}
+                </div>
+                <CardTitle className="mt-4">{category.name}</CardTitle>
+                <CardDescription>
+                  {isLocked ? 'Scan QR code to unlock' : isCompleted ? `Completed today` : 'Ready for inspection'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => handleStartChecklist(category.name)}
+                  disabled={isLocked}
+                  variant={isCompleted ? "outline" : "default"}
+                  className="w-full"
+                >
+                  {isCompleted ? 'View Checklist' : isLocked ? 'Locked' : 'Start Checklist'}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

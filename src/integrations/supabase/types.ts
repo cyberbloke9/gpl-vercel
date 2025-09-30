@@ -98,6 +98,7 @@ export type Database = {
       }
       completed_checklists: {
         Row: {
+          category_unlocked_at: string | null
           checklist_id: string
           completed_at: string
           equipment_id: string
@@ -106,6 +107,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category_unlocked_at?: string | null
           checklist_id: string
           completed_at?: string
           equipment_id: string
@@ -114,6 +116,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category_unlocked_at?: string | null
           checklist_id?: string
           completed_at?: string
           equipment_id?: string
@@ -188,6 +191,7 @@ export type Database = {
       }
       equipment: {
         Row: {
+          category: string
           created_at: string
           description: string | null
           id: string
@@ -196,6 +200,7 @@ export type Database = {
           qr_code: string
         }
         Insert: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -204,6 +209,7 @@ export type Database = {
           qr_code: string
         }
         Update: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -212,6 +218,59 @@ export type Database = {
           qr_code?: string
         }
         Relationships: []
+      }
+      issues: {
+        Row: {
+          completed_item_id: string
+          created_at: string
+          description: string
+          id: string
+          notes: string | null
+          priority: string
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_item_id: string
+          created_at?: string
+          description: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          reported_at?: string
+          reported_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_item_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issues_completed_item_id_fkey"
+            columns: ["completed_item_id"]
+            isOneToOne: false
+            referencedRelation: "completed_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       photos: {
         Row: {
@@ -266,6 +325,42 @@ export type Database = {
           id?: string
           role?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          date_from: string
+          date_to: string
+          generated_at: string
+          generated_by: string
+          id: string
+          report_type: string
+          summary: Json | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          date_from: string
+          date_to: string
+          generated_at?: string
+          generated_by: string
+          id?: string
+          report_type?: string
+          summary?: Json | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          date_from?: string
+          date_to?: string
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          report_type?: string
+          summary?: Json | null
+          title?: string
         }
         Relationships: []
       }

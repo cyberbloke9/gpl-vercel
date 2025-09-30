@@ -1,39 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import QRScanner from '@/components/QRScanner';
-import ChecklistCard from '@/components/ChecklistCard';
-import ChecklistView from '@/components/ChecklistView';
-import { 
-  QrCode, 
-  LogOut, 
-  User, 
-  Settings, 
-  Clock,
-  TrendingUp,
-  CheckCircle2
-} from 'lucide-react';
-
-interface Equipment {
-  id: string;
-  name: string;
-  qr_code: string;
-  location: string;
-  description: string;
-}
-
-interface Checklist {
-  id: string;
-  title: string;
-  description: string;
-  frequency: string;
-  equipment: Equipment;
-}
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigation } from "@/components/Navigation";
+import { CategoryDashboard } from "@/components/CategoryDashboard";
+import { IssuesTracker } from "@/components/IssuesTracker";
+import { ReportsViewer } from "@/components/ReportsViewer";
+import ChecklistView from "@/components/ChecklistView";
+import { QRScanner } from "@/components/QRScanner";
+import { Button } from "@/components/ui/button";
+import { LogOut, User } from "lucide-react";
+import { toast } from "sonner";
 
 interface ChecklistItem {
   id: string;
@@ -47,54 +24,38 @@ interface ChecklistItem {
 }
 
 const Index = () => {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  
+  const { user, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState('checklists');
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [currentChecklist, setCurrentChecklist] = useState<Checklist | null>(null);
-  const [currentItems, setCurrentItems] = useState<ChecklistItem[]>([]);
-  const [showChecklistView, setShowChecklistView] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [showChecklist, setShowChecklist] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [currentChecklist, setCurrentChecklist] = useState<any>(null);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    
     loadData();
   }, [user, navigate]);
 
   const loadData = async () => {
     try {
       // Load user profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user?.id)
         .single();
-      
+
+      if (profileError) throw profileError;
       setProfile(profileData);
-
-      // Load checklists with equipment
-      const { data: checklistData, error } = await supabase
-        .from('checklists')
-        .select(`
-          *,
-          equipment (*)
-        `);
-
-      if (error) throw error;
-      setChecklists(checklistData || []);
-    } catch (error: any) {
-      toast({
-        title: "Error loading data",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -102,20 +63,55 @@ const Index = () => {
 
   const handleQRScan = async (qrCode: string) => {
     try {
-      // Find checklist by equipment QR code
-      const checklist = checklists.find(c => c.equipment.qr_code === qrCode);
-      
-      if (!checklist) {
-        toast({
-          title: "Equipment not found",
-          description: `No checklist found for QR code: ${qrCode}`,
-          variant: "destructive",
-        });
+      // Find equipment by QR code
+      const { data: equipment, error: equipmentError } = await supabase
+        .from('equipment')
+        .select('*')
+        .eq('qr_code', qrCode)
+        .single();
+
+      if (equipmentError || !equipment) {
+        toast.error("Equipment not found");
+        setShowQRScanner(false);
+        return;
+      }
+
+      // Find checklist for this equipment's category
+      const { data: checklist, error: checklistError } = await supabase
+        .from('checklists')
+        .select('*')
+        .ilike('title', `%${equipment.category}%`)
+        .single();
+
+      if (checklistError || !checklist) {
+        toast.error("No checklist found for this equipment category");
         setShowQRScanner(false);
         return;
       }
 
       // Load checklist items
+      const { data: items, error: itemsError } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('checklist_id', checklist.id)
+        .order('sort_order');
+
+      if (itemsError) throw itemsError;
+
+      setCurrentChecklist({ ...checklist, equipment, category: equipment.category });
+      setChecklistItems(items || []);
+      setShowQRScanner(false);
+      setShowChecklist(true);
+      toast.success(`✅ ${equipment.category} unlocked! Starting checklist...`);
+    } catch (error) {
+      console.error('Error handling QR scan:', error);
+      toast.error("Failed to load checklist");
+      setShowQRScanner(false);
+    }
+  };
+
+  const handleStartChecklist = async (checklist: any) => {
+    try {
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
@@ -125,213 +121,150 @@ const Index = () => {
       if (error) throw error;
 
       setCurrentChecklist(checklist);
-      setCurrentItems(items || []);
-      setShowQRScanner(false);
-      setShowChecklistView(true);
-      
-      toast({
-        title: "Checklist loaded",
-        description: `Ready to start: ${checklist.title}`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error loading checklist",
-        description: error.message,
-        variant: "destructive",
-      });
-      setShowQRScanner(false);
+      setChecklistItems(items || []);
+      setShowChecklist(true);
+    } catch (error) {
+      console.error('Error loading checklist items:', error);
+      toast.error("Failed to load checklist items");
     }
   };
 
-  const handleStartChecklist = async (checklist: Checklist) => {
+  const handleCompleteChecklist = async (results: any[]) => {
     try {
-      // Load checklist items
-      const { data: items, error } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .eq('checklist_id', checklist.id)
-        .order('sort_order');
-
-      if (error) throw error;
-
-      setCurrentChecklist(checklist);
-      setCurrentItems(items || []);
-      setShowChecklistView(true);
-    } catch (error: any) {
-      toast({
-        title: "Error loading checklist",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCompleteChecklist = async (results: Array<{
-    itemId: string;
-    status: 'pass' | 'fail' | 'na';
-    notes?: string;
-    actualValue?: string;
-    hasIssue?: boolean;
-  }>) => {
-    if (!currentChecklist || !user) return;
-
-    try {
-      // Create completed checklist record
+      // Create completed checklist record with timestamp
       const { data: completedChecklist, error: checklistError } = await supabase
         .from('completed_checklists')
         .insert({
           checklist_id: currentChecklist.id,
-          user_id: user.id,
-          equipment_id: currentChecklist.equipment.id,
-          notes: '',
+          user_id: user?.id,
+          equipment_id: currentChecklist.equipment?.id,
+          notes: results.find(r => r.notes)?.notes || null,
+          category_unlocked_at: new Date().toISOString(), // Record when category was unlocked
         })
         .select()
         .single();
 
       if (checklistError) throw checklistError;
 
-      // Create completed items
+      // Create completed items records
       const completedItems = results.map(result => ({
         completed_checklist_id: completedChecklist.id,
         checklist_item_id: result.itemId,
         status: result.status,
-        notes: result.notes || null,
-        actual_value: result.actualValue || null,
-        has_issue: result.hasIssue || false,
+        notes: result.notes,
+        actual_value: result.actualValue,
+        has_issue: result.status === 'fail',
       }));
 
-      const { error: itemsError } = await supabase
+      const { data: insertedItems, error: itemsError } = await supabase
         .from('completed_items')
-        .insert(completedItems);
+        .insert(completedItems)
+        .select();
 
       if (itemsError) throw itemsError;
 
-      toast({
-        title: "Checklist completed!",
-        description: `${currentChecklist.title} has been successfully completed.`,
-      });
+      // Create issue records for failed items
+      const failedItems = results.filter(r => r.status === 'fail');
+      if (failedItems.length > 0 && insertedItems) {
+        const issues = failedItems.map((result, index) => ({
+          completed_item_id: insertedItems[index].id,
+          description: result.notes || 'Item marked as failed',
+          priority: 'high',
+          reported_by: user?.id,
+          reported_at: new Date().toISOString(),
+        }));
 
-      setShowChecklistView(false);
+        const { error: issuesError } = await supabase
+          .from('issues')
+          .insert(issues);
+
+        if (issuesError) console.error('Error creating issues:', issuesError);
+      }
+
+      toast.success("✅ Checklist completed successfully!");
+      setShowChecklist(false);
       setCurrentChecklist(null);
-      setCurrentItems([]);
-    } catch (error: any) {
-      toast({
-        title: "Error completing checklist",
-        description: error.message,
-        variant: "destructive",
-      });
+      loadData();
+    } catch (error) {
+      console.error('Error completing checklist:', error);
+      toast.error("Failed to save checklist");
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Settings className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-industrial-darker via-industrial-dark to-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/20 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+          <p className="text-muted-foreground animate-pulse">Loading maintenance system...</p>
         </div>
       </div>
     );
   }
 
-  if (showChecklistView && currentChecklist) {
+  // Show checklist view if active
+  if (showChecklist && currentChecklist) {
     return (
       <ChecklistView
         checklist={currentChecklist}
-        items={currentItems}
+        items={checklistItems}
         onComplete={handleCompleteChecklist}
-        onBack={() => setShowChecklistView(false)}
+        onBack={() => {
+          setShowChecklist(false);
+          setCurrentChecklist(null);
+        }}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-industrial-darker via-industrial-dark to-background">
       {/* Header */}
-      <div className="bg-gradient-primary text-white p-4">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center justify-between mb-4">
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Settings className="h-5 w-5" />
+              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                Maintenance Hub
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-foreground font-medium">{profile?.full_name}</span>
               </div>
-              <div>
-                <h1 className="font-bold text-lg">MaintenanceCheck</h1>
-                <p className="text-white/80 text-sm">
-                  Welcome, {profile?.full_name || 'Technician'}
-                </p>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <CheckCircle2 className="h-5 w-5 mx-auto mb-1" />
-              <div className="text-lg font-bold">12</div>
-              <div className="text-xs text-white/80">Completed</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <Clock className="h-5 w-5 mx-auto mb-1" />
-              <div className="text-lg font-bold">3</div>
-              <div className="text-xs text-white/80">Pending</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <TrendingUp className="h-5 w-5 mx-auto mb-1" />
-              <div className="text-lg font-bold">98%</div>
-              <div className="text-xs text-white/80">Success Rate</div>
+              <Button 
+                onClick={() => signOut()} 
+                variant="ghost" 
+                size="icon"
+                className="hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <div className="max-w-md mx-auto p-4 space-y-6">
-        {/* QR Scanner Button */}
-        <Button
-          variant="industrial"
-          size="mobile"
-          className="w-full"
-          onClick={() => setShowQRScanner(true)}
-        >
-          <QrCode className="h-5 w-5" />
-          Scan Equipment QR Code
-        </Button>
+      {/* Navigation */}
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Available Checklists */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Available Checklists</h2>
-          {checklists.length > 0 ? (
-            <div className="space-y-3">
-              {checklists.map((checklist) => (
-                <ChecklistCard
-                  key={checklist.id}
-                  id={checklist.id}
-                  title={checklist.title}
-                  description={checklist.description}
-                  equipment={checklist.equipment}
-                  frequency={checklist.frequency}
-                  onStart={() => handleStartChecklist(checklist)}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-muted-foreground">No checklists available</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+      {/* Main Content */}
+      <main className="container mx-auto max-w-7xl">
+        {activeTab === 'checklists' && (
+          <CategoryDashboard 
+            onStartChecklist={handleStartChecklist}
+            onScanQR={() => setShowQRScanner(true)}
+          />
+        )}
+        {activeTab === 'issues' && <IssuesTracker />}
+        {activeTab === 'reports' && <ReportsViewer />}
+      </main>
 
       {/* QR Scanner Modal */}
       {showQRScanner && (
