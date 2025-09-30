@@ -13,6 +13,7 @@ interface Issue {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   reported_at: string;
+  reported_by_name?: string;
   resolved_at?: string;
   notes?: string;
   completed_items: {
@@ -151,7 +152,7 @@ export const IssuesTracker = () => {
                       {issue.completed_items.checklist_items.title}
                     </CardTitle>
                     <CardDescription>
-                      {issue.completed_items.checklist_items.category} • Reported {format(new Date(issue.reported_at), 'PPp')}
+                      {issue.completed_items.checklist_items.category} • Reported by {issue.reported_by_name || 'System'} on {format(new Date(issue.reported_at), 'PPp')}
                     </CardDescription>
                   </div>
                 </div>

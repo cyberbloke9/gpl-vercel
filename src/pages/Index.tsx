@@ -131,7 +131,10 @@ const Index = () => {
 
   const handleCompleteChecklist = async (results: any[]) => {
     try {
-      // Create completed checklist record with timestamp
+      // Get current user's name for audit trail
+      const userName = profile?.full_name || 'Unknown User';
+
+      // Create completed checklist record with timestamp and user name
       const { data: completedChecklist, error: checklistError } = await supabase
         .from('completed_checklists')
         .insert({
@@ -139,7 +142,8 @@ const Index = () => {
           user_id: user?.id,
           equipment_id: currentChecklist.equipment?.id,
           notes: results.find(r => r.notes)?.notes || null,
-          category_unlocked_at: new Date().toISOString(), // Record when category was unlocked
+          category_unlocked_at: new Date().toISOString(),
+          completed_by_name: userName, // Store name for audit trail
         })
         .select()
         .single();
@@ -171,6 +175,7 @@ const Index = () => {
           description: result.notes || 'Item marked as failed',
           priority: 'high',
           reported_by: user?.id,
+          reported_by_name: userName, // Store name for audit trail
           reported_at: new Date().toISOString(),
         }));
 

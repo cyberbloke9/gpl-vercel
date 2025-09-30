@@ -101,6 +101,7 @@ export type Database = {
           category_unlocked_at: string | null
           checklist_id: string
           completed_at: string
+          completed_by_name: string | null
           equipment_id: string
           id: string
           notes: string | null
@@ -110,6 +111,7 @@ export type Database = {
           category_unlocked_at?: string | null
           checklist_id: string
           completed_at?: string
+          completed_by_name?: string | null
           equipment_id: string
           id?: string
           notes?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           category_unlocked_at?: string | null
           checklist_id?: string
           completed_at?: string
+          completed_by_name?: string | null
           equipment_id?: string
           id?: string
           notes?: string | null
@@ -229,6 +232,7 @@ export type Database = {
           priority: string
           reported_at: string
           reported_by: string
+          reported_by_name: string | null
           resolved_at: string | null
           resolved_by: string | null
           status: string
@@ -243,6 +247,7 @@ export type Database = {
           priority?: string
           reported_at?: string
           reported_by: string
+          reported_by_name?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
@@ -257,6 +262,7 @@ export type Database = {
           priority?: string
           reported_at?: string
           reported_by?: string
+          reported_by_name?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           status?: string
@@ -335,6 +341,7 @@ export type Database = {
           date_to: string
           generated_at: string
           generated_by: string
+          generated_by_name: string | null
           id: string
           report_type: string
           summary: Json | null
@@ -346,6 +353,7 @@ export type Database = {
           date_to: string
           generated_at?: string
           generated_by: string
+          generated_by_name?: string | null
           id?: string
           report_type?: string
           summary?: Json | null
@@ -357,6 +365,7 @@ export type Database = {
           date_to?: string
           generated_at?: string
           generated_by?: string
+          generated_by_name?: string | null
           id?: string
           report_type?: string
           summary?: Json | null
@@ -369,7 +378,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_name: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
