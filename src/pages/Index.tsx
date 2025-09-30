@@ -40,6 +40,10 @@ interface ChecklistItem {
   title: string;
   description: string;
   sort_order: number;
+  category: string;
+  expected_value: string | null;
+  unit: string | null;
+  icon: string | null;
 }
 
 const Index = () => {
@@ -166,6 +170,8 @@ const Index = () => {
     itemId: string;
     status: 'pass' | 'fail' | 'na';
     notes?: string;
+    actualValue?: string;
+    hasIssue?: boolean;
   }>) => {
     if (!currentChecklist || !user) return;
 
@@ -190,6 +196,8 @@ const Index = () => {
         checklist_item_id: result.itemId,
         status: result.status,
         notes: result.notes || null,
+        actual_value: result.actualValue || null,
+        has_issue: result.hasIssue || false,
       }));
 
       const { error: itemsError } = await supabase

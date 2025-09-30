@@ -16,28 +16,40 @@ export type Database = {
     Tables: {
       checklist_items: {
         Row: {
+          category: string
           checklist_id: string
           created_at: string
           description: string | null
+          expected_value: string | null
+          icon: string | null
           id: string
           sort_order: number
           title: string
+          unit: string | null
         }
         Insert: {
+          category?: string
           checklist_id: string
           created_at?: string
           description?: string | null
+          expected_value?: string | null
+          icon?: string | null
           id?: string
           sort_order?: number
           title: string
+          unit?: string | null
         }
         Update: {
+          category?: string
           checklist_id?: string
           created_at?: string
           description?: string | null
+          expected_value?: string | null
+          icon?: string | null
           id?: string
           sort_order?: number
           title?: string
+          unit?: string | null
         }
         Relationships: [
           {
@@ -128,25 +140,31 @@ export type Database = {
       }
       completed_items: {
         Row: {
+          actual_value: string | null
           checklist_item_id: string
           completed_checklist_id: string
           created_at: string
+          has_issue: boolean | null
           id: string
           notes: string | null
           status: string
         }
         Insert: {
+          actual_value?: string | null
           checklist_item_id: string
           completed_checklist_id: string
           created_at?: string
+          has_issue?: boolean | null
           id?: string
           notes?: string | null
           status: string
         }
         Update: {
+          actual_value?: string | null
           checklist_item_id?: string
           completed_checklist_id?: string
           created_at?: string
+          has_issue?: boolean | null
           id?: string
           notes?: string | null
           status?: string

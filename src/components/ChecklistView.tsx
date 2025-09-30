@@ -13,7 +13,11 @@ import {
   ArrowLeft, 
   FileText,
   MapPin,
-  User
+  Activity,
+  Zap,
+  Droplet,
+  Wind,
+  Shield
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,6 +26,10 @@ interface ChecklistItem {
   title: string;
   description: string;
   sort_order: number;
+  category: string;
+  expected_value: string | null;
+  unit: string | null;
+  icon: string | null;
 }
 
 interface ChecklistViewProps {
@@ -39,6 +47,8 @@ interface ChecklistViewProps {
     itemId: string;
     status: 'pass' | 'fail' | 'na';
     notes?: string;
+    actualValue?: string;
+    hasIssue?: boolean;
   }>) => void;
   onBack: () => void;
 }
@@ -48,6 +58,8 @@ type ItemStatus = 'pass' | 'fail' | 'na' | 'pending';
 interface ItemResult {
   status: ItemStatus;
   notes: string;
+  actualValue: string;
+  hasIssue: boolean;
 }
 
 const ChecklistView: React.FC<ChecklistViewProps> = ({
@@ -59,11 +71,21 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<Record<string, ItemResult>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentItem = items[currentIndex];
   const progress = ((currentIndex + 1) / items.length) * 100;
+
+  // Group items by category
+  const groupedItems = items.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<string, ChecklistItem[]>);
 
   const handleStatusChange = (status: ItemStatus) => {
     if (!currentItem) return;
@@ -74,6 +96,8 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
         ...prev[currentItem.id],
         status,
         notes: prev[currentItem.id]?.notes || '',
+        actualValue: prev[currentItem.id]?.actualValue || '',
+        hasIssue: status === 'fail',
       },
     }));
   };
@@ -87,6 +111,23 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
         ...prev[currentItem.id],
         notes,
         status: prev[currentItem.id]?.status || 'pending',
+        actualValue: prev[currentItem.id]?.actualValue || '',
+        hasIssue: prev[currentItem.id]?.hasIssue || false,
+      },
+    }));
+  };
+
+  const handleActualValueChange = (value: string) => {
+    if (!currentItem) return;
+    
+    setResults(prev => ({
+      ...prev,
+      [currentItem.id]: {
+        ...prev[currentItem.id],
+        actualValue: value,
+        status: prev[currentItem.id]?.status || 'pending',
+        notes: prev[currentItem.id]?.notes || '',
+        hasIssue: prev[currentItem.id]?.hasIssue || false,
       },
     }));
   };
@@ -129,6 +170,8 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
       itemId: item.id,
       status: results[item.id]?.status as 'pass' | 'fail' | 'na' || 'na',
       notes: results[item.id]?.notes,
+      actualValue: results[item.id]?.actualValue,
+      hasIssue: results[item.id]?.hasIssue,
     }));
 
     await onComplete(completedResults);
@@ -147,6 +190,8 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
   const isComplete = currentIndex === items.length - 1 && canProceed();
 
   if (!currentItem) return null;
+
+  const categoryIcon = getCategoryIcon(currentItem.category);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -180,13 +225,47 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Current Item */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">{currentItem.title}</CardTitle>
-            <CardDescription>{currentItem.description}</CardDescription>
+        {/* Current Item Card */}
+        <Card className="shadow-card border-2 border-primary/20">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+            <div className="flex items-center gap-2">
+              {categoryIcon}
+              <div className="flex-1">
+                <CardTitle className="text-base">{currentItem.title}</CardTitle>
+                <CardDescription className="text-xs">{currentItem.category}</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 pt-4">
+            {/* Expected Value Display */}
+            {currentItem.expected_value && (
+              <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                <div className="text-xs text-muted-foreground mb-1">Expected Value</div>
+                <div className="text-lg font-bold text-primary">
+                  {currentItem.expected_value}
+                  {currentItem.unit && <span className="ml-1 text-sm">{currentItem.unit}</span>}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{currentItem.description}</div>
+              </div>
+            )}
+
+            {/* Actual Value Input (if expected value exists) */}
+            {currentItem.expected_value && (
+              <div className="space-y-2">
+                <Label htmlFor="actual-value" className="text-sm font-medium">Actual Reading</Label>
+                <div className="flex gap-2">
+                  <input
+                    id="actual-value"
+                    type="text"
+                    placeholder={`Enter reading${currentItem.unit ? ` (${currentItem.unit})` : ''}`}
+                    value={results[currentItem.id]?.actualValue || ''}
+                    onChange={(e) => handleActualValueChange(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Status Buttons */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Inspection Result</Label>
@@ -226,7 +305,7 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
                 placeholder="Add any observations or comments..."
                 value={results[currentItem.id]?.notes || ''}
                 onChange={(e) => handleNotesChange(e.target.value)}
-                className="min-h-[100px]"
+                className="min-h-[80px]"
               />
             </div>
 
@@ -236,7 +315,7 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
               onClick={handlePhotoCapture}
               className="w-full"
             >
-              <Camera className="h-4 w-4" />
+              <Camera className="h-4 w-4 mr-2" />
               Attach Photo
             </Button>
             <input
@@ -281,30 +360,28 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
           )}
         </div>
 
-        {/* Item Status Summary */}
+        {/* Category-based Progress */}
         <Card className="bg-muted/30">
           <CardContent className="pt-4">
-            <div className="grid grid-cols-5 gap-1">
-              {items.map((item, index) => {
-                const result = results[item.id];
-                const isCurrent = index === currentIndex;
-                const isCompleted = result?.status && result.status !== 'pending';
+            <div className="space-y-2">
+              {Object.entries(groupedItems).map(([category, categoryItems]) => {
+                const completedInCategory = categoryItems.filter(
+                  item => results[item.id]?.status && results[item.id].status !== 'pending'
+                ).length;
+                const totalInCategory = categoryItems.length;
+                const isCurrentCategory = currentItem.category === category;
                 
                 return (
                   <div
-                    key={item.id}
-                    className={`
-                      h-8 rounded flex items-center justify-center text-xs font-medium border-2
-                      ${isCurrent 
-                        ? 'border-primary bg-primary/10' 
-                        : isCompleted 
-                          ? 'border-transparent bg-muted' 
-                          : 'border-transparent bg-muted/50'
-                      }
-                      ${isCompleted ? getStatusColor(result.status) : 'text-muted-foreground'}
-                    `}
+                    key={category}
+                    className={`flex items-center justify-between p-2 rounded text-xs ${
+                      isCurrentCategory ? 'bg-primary/10 border border-primary/20' : ''
+                    }`}
                   >
-                    {index + 1}
+                    <span className="font-medium">{category}</span>
+                    <span className="text-muted-foreground">
+                      {completedInCategory}/{totalInCategory}
+                    </span>
                   </div>
                 );
               })}
@@ -314,6 +391,18 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
       </div>
     </div>
   );
+};
+
+const getCategoryIcon = (category: string) => {
+  const iconMap: Record<string, React.ReactNode> = {
+    'Turbine System': <Activity className="h-5 w-5 text-primary" />,
+    'Generator': <Zap className="h-5 w-5 text-primary" />,
+    'Oil Pressure Unit': <Droplet className="h-5 w-5 text-primary" />,
+    'Cooling System': <Wind className="h-5 w-5 text-primary" />,
+    'Electrical Systems': <Zap className="h-5 w-5 text-primary" />,
+    'Safety & General': <Shield className="h-5 w-5 text-primary" />,
+  };
+  return iconMap[category] || <FileText className="h-5 w-5 text-primary" />;
 };
 
 export default ChecklistView;
