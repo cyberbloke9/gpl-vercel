@@ -34,9 +34,10 @@ export const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
           onClose();
         },
         (error) => {
-          // Suppress verbose scanning errors
-          if (!error.includes("NotFoundException")) {
-            console.log("QR scan error:", error);
+          // Suppress verbose scanning errors - safely handle different error types
+          const errorMessage = typeof error === 'string' ? error : String(error);
+          if (!errorMessage.includes("NotFoundException")) {
+            console.log("QR scan error:", errorMessage);
           }
         }
       );

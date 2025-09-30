@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Calendar } from "lucide-react";
+import { FileText, Download, Calendar, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { generateReportHTML, downloadReport } from "@/utils/reportGenerator";
+import { downloadQRCodeSheet } from "@/utils/qrCodeGenerator";
+import { toast } from "sonner";
 
 interface Report {
   id: string;
@@ -73,8 +76,40 @@ export const ReportsViewer = () => {
           break;
       }
 
-      // Get current user's name using the secure function
+      // Fetch completed checklists with full details
+      const { data: completedChecklists, error: checklistsError } = await supabase
+        .from('completed_checklists')
+        .select(`
+          *,
+          equipment:equipment_id(*),
+          completed_items:completed_items(
+            *,
+            checklist_item:checklist_item_id(*)
+          )
+        `)
+        .gte('completed_at', dateFrom.toISOString())
+        .lte('completed_at', now.toISOString());
+
+      if (checklistsError) throw checklistsError;
+
+      // Fetch issues
+      const { data: issues, error: issuesError } = await supabase
+        .from('issues')
+        .select('*')
+        .gte('reported_at', dateFrom.toISOString())
+        .lte('reported_at', now.toISOString());
+
+      if (issuesError) throw issuesError;
+
+      // Get current user's name
       const { data: userName } = await supabase.rpc('get_current_user_name');
+
+      // Create summary with actual data
+      const summary = {
+        totalChecklists: completedChecklists?.length || 0,
+        totalIssues: issues?.length || 0,
+        dateGenerated: now.toISOString()
+      };
 
       const { error } = await supabase
         .from('reports')
@@ -82,16 +117,73 @@ export const ReportsViewer = () => {
           title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report - ${format(now, 'PP')}`,
           report_type: type,
           generated_by: user?.id,
-          generated_by_name: userName || 'System', // Store name for audit trail
+          generated_by_name: userName || 'System',
           date_from: dateFrom.toISOString(),
           date_to: now.toISOString(),
-          summary: { generated: true }
+          summary
         });
 
       if (error) throw error;
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} report generated successfully!`);
       loadReports();
     } catch (error) {
       console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
+    }
+  };
+
+  const handleDownloadReport = async (report: Report) => {
+    try {
+      toast.loading('Generating report document...');
+
+      // Fetch detailed data for the report period
+      const { data: completedChecklists, error: checklistsError } = await supabase
+        .from('completed_checklists')
+        .select(`
+          *,
+          equipment:equipment_id(*),
+          completed_items:completed_items(
+            *,
+            checklist_item:checklist_item_id(*)
+          )
+        `)
+        .gte('completed_at', report.date_from)
+        .lte('completed_at', report.date_to);
+
+      if (checklistsError) throw checklistsError;
+
+      const { data: issues, error: issuesError } = await supabase
+        .from('issues')
+        .select('*')
+        .gte('reported_at', report.date_from)
+        .lte('reported_at', report.date_to);
+
+      if (issuesError) throw issuesError;
+
+      // Transform data to match expected format
+      const transformedChecklists = (completedChecklists || []).map((c: any) => ({
+        ...c,
+        items: c.completed_items || []
+      }));
+
+      const reportHTML = generateReportHTML({
+        completedChecklists: transformedChecklists,
+        issues: issues || [],
+        dateFrom: new Date(report.date_from),
+        dateTo: new Date(report.date_to),
+        reportType: report.report_type,
+        generatedBy: report.generated_by_name || 'System'
+      });
+
+      const filename = `maintenance-report-${report.report_type}-${format(new Date(report.date_from), 'yyyy-MM-dd')}.html`;
+      downloadReport(reportHTML, filename);
+      
+      toast.dismiss();
+      toast.success('Report downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast.dismiss();
+      toast.error('Failed to download report');
     }
   };
 
@@ -102,6 +194,10 @@ export const ReportsViewer = () => {
       </div>
     );
   }
+
+  const getFilteredReports = (type: string) => {
+    return reports.filter(r => r.report_type === type);
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -120,6 +216,10 @@ export const ReportsViewer = () => {
             <Calendar className="mr-2 h-4 w-4" />
             Generate Monthly Report
           </Button>
+          <Button onClick={downloadQRCodeSheet} variant="secondary" className="ml-auto">
+            <QrCode className="mr-2 h-4 w-4" />
+            Download Test QR Codes
+          </Button>
         </div>
       </div>
 
@@ -132,35 +232,162 @@ export const ReportsViewer = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {reports.map((report) => (
-            <Card key={report.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className={getReportTypeColor(report.report_type)}>
-                        {report.report_type.toUpperCase()}
-                      </Badge>
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-lg">{report.title}</CardTitle>
-                    <CardDescription>
-                      Generated by {report.generated_by_name || 'System'} on {format(new Date(report.generated_at), 'PPp')}
-                    </CardDescription>
-                  </div>
-                  <Button variant="ghost" size="icon">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-muted-foreground">
-                  <p>Period: {format(new Date(report.date_from), 'PP')} - {format(new Date(report.date_to), 'PP')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-8">
+          {/* Daily Reports */}
+          <div>
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Daily Reports
+            </h3>
+            <div className="space-y-4">
+              {getFilteredReports('daily').length === 0 ? (
+                <p className="text-muted-foreground text-sm">No daily reports generated yet</p>
+              ) : (
+                getFilteredReports('daily').map((report) => (
+                  <Card key={report.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className={getReportTypeColor(report.report_type)}>
+                              {report.report_type.toUpperCase()}
+                            </Badge>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <CardTitle className="text-lg">{report.title}</CardTitle>
+                          <CardDescription>
+                            Generated by {report.generated_by_name || 'System'} on {format(new Date(report.generated_at), 'PPp')}
+                          </CardDescription>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDownloadReport(report)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Period: {format(new Date(report.date_from), 'PP')} - {format(new Date(report.date_to), 'PP')}</p>
+                        {report.summary && (
+                          <div className="mt-2 flex gap-4">
+                            <span>✓ {report.summary.totalChecklists || 0} checklists</span>
+                            <span>⚠️ {report.summary.totalIssues || 0} issues</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Weekly Reports */}
+          <div>
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-info" />
+              Weekly Reports
+            </h3>
+            <div className="space-y-4">
+              {getFilteredReports('weekly').length === 0 ? (
+                <p className="text-muted-foreground text-sm">No weekly reports generated yet</p>
+              ) : (
+                getFilteredReports('weekly').map((report) => (
+                  <Card key={report.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className={getReportTypeColor(report.report_type)}>
+                              {report.report_type.toUpperCase()}
+                            </Badge>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <CardTitle className="text-lg">{report.title}</CardTitle>
+                          <CardDescription>
+                            Generated by {report.generated_by_name || 'System'} on {format(new Date(report.generated_at), 'PPp')}
+                          </CardDescription>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDownloadReport(report)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Period: {format(new Date(report.date_from), 'PP')} - {format(new Date(report.date_to), 'PP')}</p>
+                        {report.summary && (
+                          <div className="mt-2 flex gap-4">
+                            <span>✓ {report.summary.totalChecklists || 0} checklists</span>
+                            <span>⚠️ {report.summary.totalIssues || 0} issues</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Monthly Reports */}
+          <div>
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-success" />
+              Monthly Reports
+            </h3>
+            <div className="space-y-4">
+              {getFilteredReports('monthly').length === 0 ? (
+                <p className="text-muted-foreground text-sm">No monthly reports generated yet</p>
+              ) : (
+                getFilteredReports('monthly').map((report) => (
+                  <Card key={report.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className={getReportTypeColor(report.report_type)}>
+                              {report.report_type.toUpperCase()}
+                            </Badge>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <CardTitle className="text-lg">{report.title}</CardTitle>
+                          <CardDescription>
+                            Generated by {report.generated_by_name || 'System'} on {format(new Date(report.generated_at), 'PPp')}
+                          </CardDescription>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDownloadReport(report)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Period: {format(new Date(report.date_from), 'PP')} - {format(new Date(report.date_to), 'PP')}</p>
+                        {report.summary && (
+                          <div className="mt-2 flex gap-4">
+                            <span>✓ {report.summary.totalChecklists || 0} checklists</span>
+                            <span>⚠️ {report.summary.totalIssues || 0} issues</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
