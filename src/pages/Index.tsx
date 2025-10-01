@@ -397,15 +397,15 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-industrial-darker via-industrial-dark to-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
                 Gayatri Mini Hydel
               </h1>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <div className="hidden sm:flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="text-foreground font-medium">{profile?.full_name}</span>
               </div>
@@ -413,9 +413,9 @@ const Index = () => {
                 onClick={() => signOut()} 
                 variant="ghost" 
                 size="icon"
-                className="hover:bg-destructive/10 hover:text-destructive"
+                className="hover:bg-destructive/10 hover:text-destructive h-9 w-9 sm:h-10 sm:w-10"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           </div>

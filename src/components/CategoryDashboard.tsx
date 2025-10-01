@@ -197,7 +197,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   const completedCount = Object.values(categoryStatuses).filter(s => s.completed).length;
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
       <EmergencyDialog
         open={showEmergencyDialog}
         onOpenChange={setShowEmergencyDialog}
@@ -205,34 +205,35 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
         onEmergencyStart={handleEmergencyStart}
       />
       
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold">Daily Maintenance Checklists</h2>
             {emergencyContext ? (
-              <p className="text-sm text-destructive font-semibold mt-1 flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" />
+              <p className="text-xs sm:text-sm text-destructive font-semibold mt-1 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
                 EMERGENCY MODE ACTIVE
               </p>
             ) : currentSession ? (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Session {currentSession} of 4 • {formatTimeSlot(currentSession)} • Progress: {completedCount}/6
               </p>
             ) : null}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => setShowEmergencyDialog(true)} 
               variant="destructive" 
-              size="mobile"
-              className="flex items-center gap-2"
+              size="sm"
+              className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm h-9"
             >
-              <AlertTriangle className="h-5 w-5" />
-              Report Emergency
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Report </span>Emergency
             </Button>
-            <Button onClick={onScanQR} variant="industrial" size="mobile" disabled={!isAccessible}>
-              <QrCode className="mr-2 h-5 w-5" />
-              Scan Equipment QR
+            <Button onClick={onScanQR} size="sm" disabled={!isAccessible} className="flex-1 sm:flex-initial text-xs sm:text-sm h-9">
+              <QrCode className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xs:inline">Scan Equipment QR</span>
+              <span className="xs:hidden">Scan QR</span>
             </Button>
           </div>
         </div>
@@ -240,16 +241,16 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
         {/* Time Slot Status */}
         {!isAccessible ? (
           <Card className="bg-warning/10 border-warning">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-warning" />
-                <div className="flex-1">
-                  <p className="font-semibold text-warning">Checklists Currently Locked</p>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-warning flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm sm:text-base font-semibold text-warning">Checklists Currently Locked</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Next available slot: {nextSlot?.time} (Session {nextSlot?.session})
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Access windows: 8:00 AM, 12:00 PM, 5:30 PM, 11:45 PM (±30 minutes)
+                    Access windows: 8:00 AM, 12:00 PM, 5:30 PM, 11:45 PM (±30 min)
                   </p>
                 </div>
               </div>
@@ -257,12 +258,12 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
           </Card>
         ) : sessionCompleted ? (
           <Card className="bg-success/10 border-success">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-8 w-8 text-success" />
-                <div className="flex-1">
-                  <p className="font-semibold text-success">Session {currentSession} Completed!</p>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-success flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm sm:text-base font-semibold text-success">Session {currentSession} Completed!</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     All 6 checklists completed. Next session: {nextSlot?.time}
                   </p>
                 </div>
@@ -271,7 +272,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
           </Card>
         ) : null}
 
-        <p className="text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Scan equipment QR codes to unlock and complete category checklists
         </p>
 
@@ -312,7 +313,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {CATEGORIES.map((category) => {
           const Icon = category.icon;
           const status = categoryStatuses[category.name] || { unlocked: false, completed: false };
@@ -324,23 +325,23 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
               key={category.name} 
               className={`transition-all ${isCompleted ? 'border-success bg-success/5' : isLocked ? 'border-border opacity-60' : 'border-primary'}`}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <Icon className={`h-8 w-8 ${isCompleted ? 'text-success' : category.color}`} />
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${isCompleted ? 'text-success' : category.color} flex-shrink-0`} />
                   {isLocked ? (
-                    <Lock className="h-5 w-5 text-muted-foreground" />
+                    <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                   ) : isCompleted ? (
-                    <Badge variant="outline" className="bg-success/10 text-success border-success">
+                    <Badge variant="outline" className="bg-success/10 text-success border-success text-xs">
                       ✓ Completed
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary text-xs">
                       ✓ Unlocked
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="mt-4">{category.name}</CardTitle>
-                <CardDescription>
+                <CardTitle className="mt-3 sm:mt-4 text-base sm:text-lg">{category.name}</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   {!isAccessible 
                     ? 'Not available - outside time window' 
                     : isLocked 
@@ -355,7 +356,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                   onClick={() => handleStartChecklist(category.name)}
                   disabled={!isAccessible || (!status.unlocked && !isCompleted)}
                   variant={isCompleted ? "outline" : "default"}
-                  className="w-full"
+                  className="w-full text-sm sm:text-base h-9 sm:h-10"
                 >
                   {!isAccessible 
                     ? 'Locked' 

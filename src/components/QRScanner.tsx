@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { useEffect, useRef, useState } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Camera } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface QRScannerProps {
   onScanSuccess: (qrCode: string) => void;
@@ -10,66 +11,122 @@ interface QRScannerProps {
 }
 
 export const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!scannerRef.current) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "qr-reader",
-        { 
-          fps: 10, 
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          videoConstraints: {
-            facingMode: "environment" // Use back camera on mobile
-          }
-        },
-        false
-      );
+    let isMounted = true;
 
-      scannerRef.current.render(
-        (decodedText) => {
-          onScanSuccess(decodedText);
-          scannerRef.current?.clear();
-          onClose();
-        },
-        (error) => {
-          // Suppress verbose scanning errors - safely handle different error types
-          const errorMessage = typeof error === 'string' ? error : String(error);
-          if (!errorMessage.includes("NotFoundException")) {
-            console.log("QR scan error:", errorMessage);
-          }
+    const initScanner = async () => {
+      try {
+        // Initialize scanner with direct camera control
+        scannerRef.current = new Html5Qrcode("qr-reader");
+        
+        // Request camera permissions and start scanning
+        const cameras = await Html5Qrcode.getCameras();
+        
+        if (!cameras || cameras.length === 0) {
+          throw new Error("No cameras found on device");
         }
-      );
-    }
+
+        // Prefer back camera on mobile devices
+        const cameraId = cameras.length > 1 ? cameras[1].id : cameras[0].id;
+
+        await scannerRef.current.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          },
+          (decodedText) => {
+            if (isMounted) {
+              onScanSuccess(decodedText);
+              scannerRef.current?.stop().catch(console.error);
+              onClose();
+            }
+          },
+          (error) => {
+            // Suppress verbose scanning errors
+            const errorMessage = typeof error === 'string' ? error : String(error);
+            if (!errorMessage.includes("NotFoundException")) {
+              console.log("QR scan error:", errorMessage);
+            }
+          }
+        );
+
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Camera initialization error:", err);
+        if (isMounted) {
+          const errorMsg = err instanceof Error ? err.message : "Failed to access camera";
+          setError(errorMsg);
+          setIsLoading(false);
+          toast.error("Camera access denied or unavailable");
+        }
+      }
+    };
+
+    initScanner();
 
     return () => {
+      isMounted = false;
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
-        scannerRef.current = null;
+        scannerRef.current.stop().catch(console.error);
       }
     };
   }, [onScanSuccess, onClose]);
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center gap-2 mb-2">
-            <Camera className="h-6 w-6 text-primary" />
-            <CardTitle>Scan Equipment QR Code</CardTitle>
+    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <CardTitle className="text-lg sm:text-xl">Scan Equipment QR Code</CardTitle>
+            </div>
           </div>
-          <CardDescription>
-            Position the QR code within the camera frame to unlock the category checklist
+          <CardDescription className="text-sm">
+            Position the QR code within the camera frame
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
-          <div className="bg-muted p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              💡 <strong>Tip:</strong> Scan the equipment's QR code to unlock its maintenance checklist
-            </p>
-          </div>
+          {isLoading && (
+            <div className="w-full aspect-square bg-muted rounded-lg flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="text-sm text-muted-foreground">Requesting camera access...</p>
+              </div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="w-full aspect-square bg-destructive/10 border-2 border-destructive/50 rounded-lg flex items-center justify-center">
+              <div className="text-center space-y-2 p-4">
+                <Camera className="h-12 w-12 text-destructive mx-auto opacity-50" />
+                <p className="text-sm text-destructive font-medium">{error}</p>
+                <p className="text-xs text-muted-foreground">Please allow camera access in your browser settings</p>
+              </div>
+            </div>
+          )}
+          
+          <div 
+            id="qr-reader" 
+            className={`w-full rounded-lg overflow-hidden ${isLoading || error ? 'hidden' : 'block'}`}
+          ></div>
+          
+          {!isLoading && !error && (
+            <div className="bg-muted/50 p-3 rounded-lg border border-border/50">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                💡 <strong>Tip:</strong> Hold steady and align the QR code within the frame
+              </p>
+            </div>
+          )}
+          
           <Button 
             onClick={onClose} 
             variant="outline" 

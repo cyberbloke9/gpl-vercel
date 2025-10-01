@@ -50,18 +50,18 @@ export const getNextTimeSlot = (): { session: number; time: string } | null => {
   const currentMinute = now.getMinutes();
   const currentTime = currentHour * 60 + currentMinute;
 
-  // Find the next slot after the current time + 30 minutes window
+  // Find the next slot after the current time (not within current window)
   for (const slot of TIME_SLOTS) {
     const slotTime = slot.hour * 60 + slot.minute;
-    const slotEndTime = slotTime + 30; // End of the 30-minute window
+    const slotStartTime = slotTime - 30; // Start of the 30-minute window
     
-    // If we haven't passed the end of this slot's window, it's the next available
-    if (currentTime < slotEndTime) {
+    // If we haven't reached the start of this slot's window, it's the next available
+    if (currentTime < slotStartTime) {
       return { session: slot.session, time: slot.label };
     }
   }
 
-  // If we're past all slots today (after 12:15 AM), return the first slot of tomorrow
+  // If we're past all slots today, return the first slot of tomorrow
   return { session: TIME_SLOTS[0].session, time: `${TIME_SLOTS[0].label} (Tomorrow)` };
 };
 
