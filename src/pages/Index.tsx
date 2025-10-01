@@ -7,6 +7,7 @@ import { CategoryDashboard } from "@/components/CategoryDashboard";
 import { IssuesTracker } from "@/components/IssuesTracker";
 import { ReportsViewer } from "@/components/ReportsViewer";
 import ChecklistView from "@/components/ChecklistView";
+import ChecklistSummary from "@/components/ChecklistSummary";
 import { QRScanner } from "@/components/QRScanner";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
@@ -31,9 +32,11 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('checklists');
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [currentChecklist, setCurrentChecklist] = useState<any>(null);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [completedItems, setCompletedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -125,6 +128,41 @@ const Index = () => {
 
   const handleStartChecklist = async (checklist: any) => {
     try {
+      // Check if checklist is already completed for current session
+      const currentSession = getCurrentSession();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data: existingCompletion } = await supabase
+        .from('completed_checklists')
+        .select('*, completed_items(*)')
+        .eq('checklist_id', checklist.id)
+        .eq('user_id', user?.id)
+        .eq('session_number', currentSession)
+        .gte('completed_at', today.toISOString())
+        .maybeSingle();
+
+      // If already completed, show summary instead
+      if (existingCompletion) {
+        const { data: items } = await supabase
+          .from('checklist_items')
+          .select('*')
+          .eq('checklist_id', checklist.id)
+          .order('sort_order');
+
+        setCurrentChecklist({
+          ...checklist,
+          completed_at: existingCompletion.completed_at,
+          completed_by_name: existingCompletion.completed_by_name,
+          session_number: existingCompletion.session_number,
+        });
+        setChecklistItems(items || []);
+        setCompletedItems(existingCompletion.completed_items || []);
+        setShowSummary(true);
+        return;
+      }
+
+      // Otherwise, start new checklist
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
@@ -321,6 +359,22 @@ const Index = () => {
           <p className="text-muted-foreground animate-pulse">Loading maintenance system...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show summary view if viewing completed checklist
+  if (showSummary && currentChecklist) {
+    return (
+      <ChecklistSummary
+        checklist={currentChecklist}
+        items={checklistItems}
+        completedItems={completedItems}
+        onBack={() => {
+          setShowSummary(false);
+          setCurrentChecklist(null);
+          setCompletedItems([]);
+        }}
+      />
     );
   }
 

@@ -132,7 +132,18 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
 
   const canProceed = () => {
     const currentResult = results[currentItem?.id];
-    return currentResult?.status && currentResult.status !== 'pending';
+    
+    // Must have a status selected
+    if (!currentResult?.status || currentResult.status === 'pending') {
+      return false;
+    }
+    
+    // If there's an expected value, actual reading is mandatory
+    if (currentItem?.expected_value && !currentResult?.actualValue?.trim()) {
+      return false;
+    }
+    
+    return true;
   };
 
   const handleNext = () => {
@@ -238,17 +249,27 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
             {/* Actual Value Input (if expected value exists) */}
             {currentItem.expected_value && (
               <div className="space-y-2">
-                <Label htmlFor="actual-value" className="text-sm font-medium">Actual Reading</Label>
+                <Label htmlFor="actual-value" className="text-sm font-medium flex items-center gap-1">
+                  Actual Reading
+                  <span className="text-destructive">*</span>
+                </Label>
                 <div className="flex gap-2">
                   <input
                     id="actual-value"
                     type="text"
-                    placeholder={`Enter reading${currentItem.unit ? ` (${currentItem.unit})` : ''}`}
+                    placeholder={`Enter reading${currentItem.unit ? ` (${currentItem.unit})` : ''} - Required`}
                     value={results[currentItem.id]?.actualValue || ''}
                     onChange={(e) => handleActualValueChange(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                    className={`flex-1 px-3 py-2 rounded-md border bg-background text-sm ${
+                      !results[currentItem.id]?.actualValue?.trim() 
+                        ? 'border-destructive focus:ring-destructive' 
+                        : 'border-input'
+                    }`}
                   />
                 </div>
+                {!results[currentItem.id]?.actualValue?.trim() && (
+                  <p className="text-xs text-destructive">Actual reading is required to proceed</p>
+                )}
               </div>
             )}
 
