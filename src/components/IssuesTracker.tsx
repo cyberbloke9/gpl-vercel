@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, CheckCircle, Clock, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface Issue {
   id: string;
@@ -15,6 +17,7 @@ interface Issue {
   reported_at: string;
   reported_by_name?: string;
   resolved_at?: string;
+  resolved_by_name?: string;
   notes?: string;
   completed_items: {
     checklist_item_id: string;
@@ -30,6 +33,8 @@ export const IssuesTracker = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
+  const [resolvingIssue, setResolvingIssue] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -67,6 +72,47 @@ export const IssuesTracker = () => {
       console.error('Error loading issues:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResolveIssue = async (issueId: string) => {
+    try {
+      setResolvingIssue(issueId);
+      
+      // Get current user's name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      const userName = profile?.full_name || 'Unknown User';
+
+      const { error } = await supabase
+        .from('issues')
+        .update({
+          status: 'resolved',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.id,
+          resolved_by_name: userName,
+          notes: resolutionNotes[issueId] || null,
+        })
+        .eq('id', issueId);
+
+      if (error) throw error;
+
+      toast.success('Issue marked as resolved!');
+      loadIssues();
+      setResolutionNotes(prev => {
+        const newNotes = { ...prev };
+        delete newNotes[issueId];
+        return newNotes;
+      });
+    } catch (error) {
+      console.error('Error resolving issue:', error);
+      toast.error('Failed to resolve issue');
+    } finally {
+      setResolvingIssue(null);
     }
   };
 
@@ -158,7 +204,7 @@ export const IssuesTracker = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-sm">{issue.description}</p>
                   {issue.notes && (
                     <div className="bg-muted p-3 rounded-md">
@@ -168,9 +214,35 @@ export const IssuesTracker = () => {
                     </div>
                   )}
                   {issue.resolved_at && (
-                    <p className="text-sm text-success">
-                      Resolved on {format(new Date(issue.resolved_at), 'PPp')}
-                    </p>
+                    <div className="bg-success/10 p-3 rounded-md">
+                      <p className="text-sm text-success">
+                        ✓ Resolved by {issue.resolved_by_name || 'System'} on {format(new Date(issue.resolved_at), 'PPp')}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Resolution section for open issues */}
+                  {(issue.status === 'open' || issue.status === 'in_progress') && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <label className="text-sm font-medium">Resolution Notes (Optional)</label>
+                      <Textarea
+                        placeholder="Add notes about how this issue was resolved..."
+                        value={resolutionNotes[issue.id] || ''}
+                        onChange={(e) => setResolutionNotes(prev => ({
+                          ...prev,
+                          [issue.id]: e.target.value
+                        }))}
+                        className="min-h-[80px]"
+                      />
+                      <Button
+                        onClick={() => handleResolveIssue(issue.id)}
+                        disabled={resolvingIssue === issue.id}
+                        className="w-full"
+                        variant="default"
+                      >
+                        {resolvingIssue === issue.id ? 'Resolving...' : 'Mark as Resolved'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardContent>

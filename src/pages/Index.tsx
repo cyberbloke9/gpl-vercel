@@ -11,6 +11,8 @@ import { QRScanner } from "@/components/QRScanner";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
+import { getCurrentSession } from "@/utils/timeSlots";
+import { format } from "date-fns";
 
 interface ChecklistItem {
   id: string;
@@ -144,8 +146,17 @@ const Index = () => {
     try {
       // Get current user's name for audit trail
       const userName = profile?.full_name || 'Unknown User';
+      const currentSession = getCurrentSession();
+      
+      if (!currentSession) {
+        toast.error("Cannot complete checklist outside of scheduled time slots");
+        return;
+      }
 
-      // Create completed checklist record with timestamp and user name
+      // Format time slot for storage (e.g., "08:00", "12:00", "17:30", "23:45")
+      const timeSlot = format(new Date(), 'HH:mm');
+
+      // Create completed checklist record with session tracking
       const { data: completedChecklist, error: checklistError } = await supabase
         .from('completed_checklists')
         .insert({
@@ -154,7 +165,9 @@ const Index = () => {
           equipment_id: currentChecklist.equipment?.id,
           notes: results.find(r => r.notes)?.notes || null,
           category_unlocked_at: new Date().toISOString(),
-          completed_by_name: userName, // Store name for audit trail
+          completed_by_name: userName,
+          session_number: currentSession,
+          time_slot: timeSlot,
         })
         .select()
         .single();
@@ -186,7 +199,7 @@ const Index = () => {
           description: result.notes || 'Item marked as failed',
           priority: 'high',
           reported_by: user?.id,
-          reported_by_name: userName, // Store name for audit trail
+          reported_by_name: userName,
           reported_at: new Date().toISOString(),
         }));
 
@@ -198,12 +211,87 @@ const Index = () => {
       }
 
       toast.success("✅ Checklist completed successfully!");
+      
+      // Check if all 6 checklists for this session are completed
+      await checkAndGenerateReport(currentSession);
+      
       setShowChecklist(false);
       setCurrentChecklist(null);
       loadData();
     } catch (error) {
       console.error('Error completing checklist:', error);
       toast.error("Failed to save checklist");
+    }
+  };
+
+  const checkAndGenerateReport = async (sessionNumber: number) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Count completed checklists for this session today
+      const { data: sessionCompletions, error: countError } = await supabase
+        .from('completed_checklists')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('session_number', sessionNumber)
+        .gte('completed_at', today.toISOString());
+
+      if (countError) throw countError;
+
+      // If all 6 checklists are completed, generate report
+      if (sessionCompletions && sessionCompletions.length === 6) {
+        // Check if report already exists for this session
+        const { data: existingReport } = await supabase
+          .from('reports')
+          .select('id')
+          .eq('generated_by', user?.id)
+          .gte('generated_at', today.toISOString())
+          .eq('report_type', 'daily')
+          .limit(1);
+
+        if (!existingReport || existingReport.length === 0) {
+          // Generate report
+          const now = new Date();
+          const { data: completedChecklists } = await supabase
+            .from('completed_checklists')
+            .select('*')
+            .eq('user_id', user?.id)
+            .eq('session_number', sessionNumber)
+            .gte('completed_at', today.toISOString());
+
+          const { data: issues } = await supabase
+            .from('issues')
+            .select('*')
+            .eq('reported_by', user?.id)
+            .gte('reported_at', today.toISOString());
+
+          const summary = {
+            totalChecklists: completedChecklists?.length || 0,
+            totalIssues: issues?.length || 0,
+            sessionNumber: sessionNumber,
+            dateGenerated: now.toISOString()
+          };
+
+          const { error: reportError } = await supabase
+            .from('reports')
+            .insert({
+              title: `Session ${sessionNumber} Report - ${format(now, 'PP')}`,
+              report_type: 'daily',
+              generated_by: user?.id,
+              generated_by_name: profile?.full_name || 'System',
+              date_from: today.toISOString(),
+              date_to: now.toISOString(),
+              summary
+            });
+
+          if (reportError) throw reportError;
+          
+          toast.success(`🎉 Session ${sessionNumber} completed! Report generated automatically.`);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking/generating report:', error);
     }
   };
 
@@ -246,7 +334,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Maintenance Hub
+                Gayatri Mini Hydel
               </h1>
             </div>
             <div className="flex items-center gap-4">

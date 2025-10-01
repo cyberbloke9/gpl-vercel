@@ -37,6 +37,7 @@ export const ReportsViewer = () => {
       const { data, error } = await supabase
         .from('reports')
         .select('*')
+        .eq('generated_by', user?.id)
         .order('generated_at', { ascending: false })
         .limit(50);
 
@@ -202,25 +203,10 @@ export const ReportsViewer = () => {
   return (
     <div className="space-y-6 p-4">
       <div className="flex flex-col gap-4">
-        <h2 className="text-2xl font-bold">Maintenance Reports</h2>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => handleGenerateReport('daily')} variant="default">
-            <Calendar className="mr-2 h-4 w-4" />
-            Generate Daily Report
-          </Button>
-          <Button onClick={() => handleGenerateReport('weekly')} variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            Generate Weekly Report
-          </Button>
-          <Button onClick={() => handleGenerateReport('monthly')} variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            Generate Monthly Report
-          </Button>
-          <Button onClick={downloadQRCodeSheet} variant="secondary" className="ml-auto">
-            <QrCode className="mr-2 h-4 w-4" />
-            Download Test QR Codes
-          </Button>
-        </div>
+        <h2 className="text-2xl font-bold">My Inspection Reports</h2>
+        <p className="text-muted-foreground text-sm">
+          Reports are automatically generated after completing all 6 checklists in a session
+        </p>
       </div>
 
       {reports.length === 0 ? (

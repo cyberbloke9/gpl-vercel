@@ -1,12 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle } from "lucide-react";
+import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getCurrentSession, getNextTimeSlot, formatTimeSlot } from "@/utils/timeSlots";
 
 interface Checklist {
   id: string;
@@ -42,12 +43,26 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   const [categoryStatuses, setCategoryStatuses] = useState<Record<string, CategoryStatus>>({});
   const [loading, setLoading] = useState(true);
   const [selectedSimulation, setSelectedSimulation] = useState<string>("");
+  const [currentSession, setCurrentSession] = useState<number | null>(null);
+  const [nextSlot, setNextSlot] = useState<{ session: number; time: string } | null>(null);
+  const [sessionCompleted, setSessionCompleted] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadData();
+      checkTimeSlot();
+      // Check time slot every minute
+      const interval = setInterval(checkTimeSlot, 60000);
+      return () => clearInterval(interval);
     }
   }, [user]);
+
+  const checkTimeSlot = () => {
+    const session = getCurrentSession();
+    setCurrentSession(session);
+    const next = getNextTimeSlot();
+    setNextSlot(next);
+  };
 
   const loadData = async () => {
     try {
@@ -66,13 +81,14 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
 
       setChecklists(categorizedChecklists);
 
-      // Load today's completion statuses
+      // Load today's completion statuses for current session
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const session = getCurrentSession();
 
       const { data: completedData, error: completedError } = await supabase
         .from('completed_checklists')
-        .select('checklist_id, category_unlocked_at, completed_at')
+        .select('checklist_id, category_unlocked_at, completed_at, session_number')
         .eq('user_id', user?.id)
         .gte('completed_at', today.toISOString());
 
@@ -84,8 +100,14 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
         statusMap[cat.name] = { unlocked: false, completed: false };
       });
 
+      // Check if current session is completed
+      const currentSessionCompletions = completedData?.filter(c => c.session_number === session) || [];
+      setSessionCompleted(currentSessionCompletions.length === 6);
+
       categorizedChecklists.forEach(checklist => {
-        const completed = completedData?.find(c => c.checklist_id === checklist.id);
+        const completed = completedData?.find(c => 
+          c.checklist_id === checklist.id && c.session_number === session
+        );
         if (completed) {
           statusMap[checklist.category] = {
             unlocked: true,
@@ -105,9 +127,17 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   };
 
   const handleStartChecklist = (category: string) => {
+    if (currentSession === null) {
+      toast.error(`Checklists are only available during scheduled time slots. Next slot: ${nextSlot?.time}`);
+      return;
+    }
+
+    if (sessionCompleted) {
+      toast.info('All checklists for this session are completed. You can view them but not edit.');
+    }
+
     const checklist = checklists.find(c => c.category === category);
     if (checklist) {
-      // Pass checklist as-is (category-based, no equipment reference)
       onStartChecklist(checklist);
     }
   };
@@ -117,10 +147,13 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
       toast.error("Please select a category to simulate");
       return;
     }
+    if (currentSession === null) {
+      toast.error(`Checklists are only available during scheduled time slots. Next slot: ${nextSlot?.time}`);
+      return;
+    }
     const category = CATEGORIES.find(cat => cat.name === selectedSimulation);
     if (category) {
       toast.success(`🎯 Simulating QR scan for ${category.name}...`);
-      // Dispatch the simulated scan event directly
       const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
       window.dispatchEvent(qrEvent);
     }
@@ -134,62 +167,109 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     );
   }
 
+  const isAccessible = currentSession !== null;
+  const completedCount = Object.values(categoryStatuses).filter(s => s.completed).length;
+
   return (
     <div className="space-y-6 p-4">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
+          <div>
+            <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
+            {currentSession && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Session {currentSession} of 4 • {formatTimeSlot(currentSession)} • Progress: {completedCount}/6
+              </p>
+            )}
+          </div>
           <div className="flex gap-2">
-            <Button onClick={onScanQR} variant="industrial" size="mobile">
+            <Button onClick={onScanQR} variant="industrial" size="mobile" disabled={!isAccessible}>
               <QrCode className="mr-2 h-5 w-5" />
               Scan Equipment QR
             </Button>
           </div>
         </div>
+
+        {/* Time Slot Status */}
+        {!isAccessible ? (
+          <Card className="bg-warning/10 border-warning">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Clock className="h-8 w-8 text-warning" />
+                <div className="flex-1">
+                  <p className="font-semibold text-warning">Checklists Currently Locked</p>
+                  <p className="text-sm text-muted-foreground">
+                    Next available slot: {nextSlot?.time} (Session {nextSlot?.session})
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Access windows: 8:00 AM, 12:00 PM, 5:30 PM, 11:45 PM (±30 minutes)
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : sessionCompleted ? (
+          <Card className="bg-success/10 border-success">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-8 w-8 text-success" />
+                <div className="flex-1">
+                  <p className="font-semibold text-success">Session {currentSession} Completed!</p>
+                  <p className="text-sm text-muted-foreground">
+                    All 6 checklists completed. Next session: {nextSlot?.time}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <p className="text-muted-foreground">
           Scan equipment QR codes to unlock and complete category checklists
         </p>
 
         {/* Testing Simulation */}
-        <Card className="bg-muted/30 border-dashed">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <div className="flex-1 space-y-1">
-                <div className="font-medium text-sm">🎯 Testing Mode - Simulate QR Scan</div>
-                <div className="text-xs text-muted-foreground">Select a category to simulate scanning its QR code</div>
+        {isAccessible && (
+          <Card className="bg-muted/30 border-dashed">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="flex-1 space-y-1">
+                  <div className="font-medium text-sm">🎯 Testing Mode - Simulate QR Scan</div>
+                  <div className="text-xs text-muted-foreground">Select a category to simulate scanning its QR code</div>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Select value={selectedSimulation} onValueChange={setSelectedSimulation}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Select category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.name} value={cat.name}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={handleSimulateScan} 
+                    variant="outline"
+                    disabled={!selectedSimulation}
+                  >
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    Simulate
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Select value={selectedSimulation} onValueChange={setSelectedSimulation}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Select category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.name} value={cat.name}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  onClick={handleSimulateScan} 
-                  variant="outline"
-                  disabled={!selectedSimulation}
-                >
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  Simulate
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {CATEGORIES.map((category) => {
           const Icon = category.icon;
           const status = categoryStatuses[category.name] || { unlocked: false, completed: false };
-          const isLocked = !status.unlocked;
+          const isLocked = !status.unlocked || !isAccessible;
           const isCompleted = status.completed;
 
           return (
@@ -214,17 +294,29 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                 </div>
                 <CardTitle className="mt-4">{category.name}</CardTitle>
                 <CardDescription>
-                  {isLocked ? 'Scan QR code to unlock' : isCompleted ? `Completed today` : 'Ready for inspection'}
+                  {!isAccessible 
+                    ? 'Not available - outside time window' 
+                    : isLocked 
+                      ? 'Scan QR code to unlock' 
+                      : isCompleted 
+                        ? `Completed in session ${currentSession}` 
+                        : 'Ready for inspection'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button
                   onClick={() => handleStartChecklist(category.name)}
-                  disabled={isLocked}
+                  disabled={!isAccessible || (!status.unlocked && !isCompleted)}
                   variant={isCompleted ? "outline" : "default"}
                   className="w-full"
                 >
-                  {isCompleted ? 'View Checklist' : isLocked ? 'Locked' : 'Start Checklist'}
+                  {!isAccessible 
+                    ? 'Locked' 
+                    : isCompleted 
+                      ? 'View Checklist' 
+                      : isLocked 
+                        ? 'Locked' 
+                        : 'Start Checklist'}
                 </Button>
               </CardContent>
             </Card>

@@ -105,6 +105,8 @@ export type Database = {
           equipment_id: string
           id: string
           notes: string | null
+          session_number: number | null
+          time_slot: string | null
           user_id: string
         }
         Insert: {
@@ -115,6 +117,8 @@ export type Database = {
           equipment_id: string
           id?: string
           notes?: string | null
+          session_number?: number | null
+          time_slot?: string | null
           user_id: string
         }
         Update: {
@@ -125,6 +129,8 @@ export type Database = {
           equipment_id?: string
           id?: string
           notes?: string | null
+          session_number?: number | null
+          time_slot?: string | null
           user_id?: string
         }
         Relationships: [
