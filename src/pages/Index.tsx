@@ -110,6 +110,17 @@ const Index = () => {
     }
   };
 
+  // Listen for simulated QR scans (for testing)
+  useEffect(() => {
+    const handleSimulatedScan = (event: CustomEvent) => {
+      handleQRScan(event.detail);
+    };
+    window.addEventListener('simulateQRScan' as any, handleSimulatedScan);
+    return () => {
+      window.removeEventListener('simulateQRScan' as any, handleSimulatedScan);
+    };
+  }, [user]);
+
   const handleStartChecklist = async (checklist: any) => {
     try {
       const { data: items, error } = await supabase

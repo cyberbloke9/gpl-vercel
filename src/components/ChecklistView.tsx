@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,6 @@ import {
   CheckCircle, 
   XCircle, 
   Minus, 
-  Camera, 
   ArrowLeft, 
   FileText,
   MapPin,
@@ -73,7 +72,6 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentItem = items[currentIndex];
   const progress = ((currentIndex + 1) / items.length) * 100;
@@ -130,20 +128,6 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
         hasIssue: prev[currentItem.id]?.hasIssue || false,
       },
     }));
-  };
-
-  const handlePhotoCapture = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast({
-        title: "Photo Captured",
-        description: "Photo will be attached to this inspection item.",
-      });
-    }
   };
 
   const canProceed = () => {
@@ -310,24 +294,6 @@ const ChecklistView: React.FC<ChecklistViewProps> = ({
                 className="min-h-[80px]"
               />
             </div>
-
-            {/* Photo Capture */}
-            <Button
-              variant="outline"
-              onClick={handlePhotoCapture}
-              className="w-full"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Attach Photo
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileChange}
-              className="hidden"
-            />
           </CardContent>
         </Card>
 

@@ -1,10 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode } from "lucide-react";
+import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface Checklist {
   id: string;
@@ -26,12 +28,12 @@ interface CategoryDashboardProps {
 }
 
 const CATEGORIES = [
-  { name: "Turbine System", icon: Activity, color: "text-primary" },
-  { name: "Oil Pressure Unit", icon: Droplet, color: "text-warning" },
-  { name: "Cooling System", icon: Wind, color: "text-info" },
-  { name: "Generator", icon: Zap, color: "text-success" },
-  { name: "Electrical Systems", icon: Shield, color: "text-secondary" },
-  { name: "Safety & General", icon: CheckCircle2, color: "text-muted-foreground" }
+  { name: "Turbine System", icon: Activity, color: "text-primary", qrCode: "TURB-2025-001" },
+  { name: "Oil Pressure Unit", icon: Droplet, color: "text-warning", qrCode: "OPU-2025-001" },
+  { name: "Cooling System", icon: Wind, color: "text-info", qrCode: "CS-2025-001" },
+  { name: "Generator", icon: Zap, color: "text-success", qrCode: "GEN-2025-001" },
+  { name: "Electrical Systems", icon: Shield, color: "text-secondary", qrCode: "ELEC-2025-001" },
+  { name: "Safety & General", icon: CheckCircle2, color: "text-muted-foreground", qrCode: "SAFE-2025-001" }
 ];
 
 export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashboardProps) => {
@@ -39,6 +41,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [categoryStatuses, setCategoryStatuses] = useState<Record<string, CategoryStatus>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedSimulation, setSelectedSimulation] = useState<string>("");
 
   useEffect(() => {
     if (user) {
@@ -109,6 +112,23 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     }
   };
 
+  const handleSimulateScan = () => {
+    if (!selectedSimulation) {
+      toast.error("Please select a category to simulate");
+      return;
+    }
+    const category = CATEGORIES.find(cat => cat.name === selectedSimulation);
+    if (category) {
+      toast.success(`🎯 Simulating QR scan for ${category.name}`);
+      onScanQR(); // This will open the scanner, but we'll pass the code directly
+      // Simulate the scan by calling with the QR code
+      setTimeout(() => {
+        const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
+        window.dispatchEvent(qrEvent);
+      }, 100);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -120,16 +140,52 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   return (
     <div className="space-y-6 p-4">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
-          <Button onClick={onScanQR} variant="industrial" size="mobile">
-            <QrCode className="mr-2 h-5 w-5" />
-            Scan Equipment QR
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={onScanQR} variant="industrial" size="mobile">
+              <QrCode className="mr-2 h-5 w-5" />
+              Scan Equipment QR
+            </Button>
+          </div>
         </div>
         <p className="text-muted-foreground">
           Scan equipment QR codes to unlock and complete category checklists
         </p>
+
+        {/* Testing Simulation */}
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex-1 space-y-1">
+                <div className="font-medium text-sm">🎯 Testing Mode - Simulate QR Scan</div>
+                <div className="text-xs text-muted-foreground">Select a category to simulate scanning its QR code</div>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Select value={selectedSimulation} onValueChange={setSelectedSimulation}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.name} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  onClick={handleSimulateScan} 
+                  variant="outline"
+                  disabled={!selectedSimulation}
+                >
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Simulate
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
