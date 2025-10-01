@@ -119,13 +119,10 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     }
     const category = CATEGORIES.find(cat => cat.name === selectedSimulation);
     if (category) {
-      toast.success(`🎯 Simulating QR scan for ${category.name}`);
-      onScanQR(); // This will open the scanner, but we'll pass the code directly
-      // Simulate the scan by calling with the QR code
-      setTimeout(() => {
-        const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
-        window.dispatchEvent(qrEvent);
-      }, 100);
+      toast.success(`🎯 Simulating QR scan for ${category.name}...`);
+      // Dispatch the simulated scan event directly
+      const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
+      window.dispatchEvent(qrEvent);
     }
   };
 
