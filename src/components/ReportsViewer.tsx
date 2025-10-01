@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { generateReportHTML, downloadReport } from "@/utils/reportGenerator";
-import { downloadQRCodeSheet, downloadProductionQRCodes } from "@/utils/qrCodeGenerator";
+import { downloadQRCodeSheet } from "@/utils/qrCodeGenerator";
 import { toast } from "sonner";
 
 interface Report {
@@ -216,27 +216,9 @@ export const ReportsViewer = () => {
             <Calendar className="mr-2 h-4 w-4" />
             Generate Monthly Report
           </Button>
-          <Button onClick={downloadQRCodeSheet} variant="outline" className="ml-auto gap-2">
-            <QrCode className="h-4 w-4" />
-            Download Test QR Codes (HTML)
-          </Button>
-          <Button
-            onClick={async () => {
-              toast.loading("Generating production QR codes...");
-              try {
-                await downloadProductionQRCodes();
-                toast.dismiss();
-                toast.success("Production QR codes downloaded successfully!");
-              } catch (error) {
-                toast.dismiss();
-                toast.error("Failed to generate QR codes");
-                console.error(error);
-              }
-            }}
-            className="gap-2"
-          >
-            <QrCode className="h-4 w-4" />
-            Download Production QR Codes (PNG)
+          <Button onClick={downloadQRCodeSheet} variant="secondary" className="ml-auto">
+            <QrCode className="mr-2 h-4 w-4" />
+            Download Test QR Codes
           </Button>
         </div>
       </div>
