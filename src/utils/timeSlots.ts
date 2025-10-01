@@ -1,3 +1,5 @@
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
 // Time slot management for IST timezone (UTC+5:30)
 export const TIME_SLOTS = [
   { session: 1, hour: 8, minute: 0, label: '8:00 AM' },
@@ -6,16 +8,16 @@ export const TIME_SLOTS = [
   { session: 4, hour: 23, minute: 45, label: '11:45 PM' },
 ] as const;
 
-// Convert UTC date to IST
+const IST_TIMEZONE = 'Asia/Kolkata';
+
+// Convert any date to IST timezone
 export const toIST = (date: Date): Date => {
-  const utcTime = date.getTime();
-  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-  return new Date(utcTime + istOffset);
+  return toZonedTime(date, IST_TIMEZONE);
 };
 
 // Get current IST time
 export const getCurrentIST = (): Date => {
-  return toIST(new Date());
+  return toZonedTime(new Date(), IST_TIMEZONE);
 };
 
 // Get current session number based on IST time

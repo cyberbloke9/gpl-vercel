@@ -102,8 +102,11 @@ export type Database = {
           checklist_id: string
           completed_at: string
           completed_by_name: string | null
+          emergency_reason: string | null
+          emergency_reported_at: string | null
           equipment_id: string
           id: string
+          is_emergency: boolean | null
           notes: string | null
           session_number: number | null
           time_slot: string | null
@@ -114,8 +117,11 @@ export type Database = {
           checklist_id: string
           completed_at?: string
           completed_by_name?: string | null
+          emergency_reason?: string | null
+          emergency_reported_at?: string | null
           equipment_id: string
           id?: string
+          is_emergency?: boolean | null
           notes?: string | null
           session_number?: number | null
           time_slot?: string | null
@@ -126,8 +132,11 @@ export type Database = {
           checklist_id?: string
           completed_at?: string
           completed_by_name?: string | null
+          emergency_reason?: string | null
+          emergency_reported_at?: string | null
           equipment_id?: string
           id?: string
+          is_emergency?: boolean | null
           notes?: string | null
           session_number?: number | null
           time_slot?: string | null

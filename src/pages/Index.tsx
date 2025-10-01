@@ -148,7 +148,12 @@ const Index = () => {
       const userName = profile?.full_name || 'Unknown User';
       const currentSession = getCurrentSession();
       
-      if (!currentSession) {
+      // Check for emergency context
+      const emergencyContextStr = sessionStorage.getItem('emergencyContext');
+      const emergencyContext = emergencyContextStr ? JSON.parse(emergencyContextStr) : null;
+      
+      // Allow completion if either in valid session OR in emergency mode
+      if (!currentSession && !emergencyContext) {
         toast.error("Cannot complete checklist outside of scheduled time slots");
         return;
       }
@@ -166,8 +171,11 @@ const Index = () => {
           notes: results.find(r => r.notes)?.notes || null,
           category_unlocked_at: new Date().toISOString(),
           completed_by_name: userName,
-          session_number: currentSession,
+          session_number: emergencyContext ? null : currentSession,
           time_slot: timeSlot,
+          is_emergency: !!emergencyContext,
+          emergency_reason: emergencyContext?.reason || null,
+          emergency_reported_at: emergencyContext?.reportedAt || null,
         })
         .select()
         .single();
@@ -197,7 +205,7 @@ const Index = () => {
         const issues = failedItems.map((result, index) => ({
           completed_item_id: insertedItems[index].id,
           description: result.notes || 'Item marked as failed',
-          priority: 'high',
+          priority: emergencyContext ? 'critical' : 'high',
           reported_by: user?.id,
           reported_by_name: userName,
           reported_at: new Date().toISOString(),
@@ -210,10 +218,15 @@ const Index = () => {
         if (issuesError) console.error('Error creating issues:', issuesError);
       }
 
-      toast.success("✅ Checklist completed successfully!");
-      
-      // Check if all 6 checklists for this session are completed
-      await checkAndGenerateReport(currentSession);
+      if (emergencyContext) {
+        toast.success("🚨 Emergency checklist completed successfully!");
+        // Clear emergency context
+        sessionStorage.removeItem('emergencyContext');
+      } else {
+        toast.success("✅ Checklist completed successfully!");
+        // Check if all 6 checklists for this session are completed
+        await checkAndGenerateReport(currentSession!);
+      }
       
       setShowChecklist(false);
       setCurrentChecklist(null);

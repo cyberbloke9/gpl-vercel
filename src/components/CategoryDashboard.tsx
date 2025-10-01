@@ -1,13 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle, Clock } from "lucide-react";
+import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle, Clock, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getCurrentSession, getNextTimeSlot, formatTimeSlot } from "@/utils/timeSlots";
+import { EmergencyDialog } from "./EmergencyDialog";
+import { format } from "date-fns";
 
 interface Checklist {
   id: string;
@@ -46,6 +48,8 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   const [currentSession, setCurrentSession] = useState<number | null>(null);
   const [nextSlot, setNextSlot] = useState<{ session: number; time: string } | null>(null);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const [emergencyContext, setEmergencyContext] = useState<{ reason: string } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -147,13 +151,35 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
       toast.error("Please select a category to simulate");
       return;
     }
-    if (currentSession === null) {
+    if (currentSession === null && !emergencyContext) {
       toast.error(`Checklists are only available during scheduled time slots. Next slot: ${nextSlot?.time}`);
       return;
     }
     const category = CATEGORIES.find(cat => cat.name === selectedSimulation);
     if (category) {
       toast.success(`🎯 Simulating QR scan for ${category.name}...`);
+      const qrEvent = new CustomEvent('simulateQRScan', { 
+        detail: category.qrCode,
+      });
+      window.dispatchEvent(qrEvent);
+    }
+  };
+
+  const handleEmergencyStart = async (categoryName: string, reason: string) => {
+    // Set emergency context
+    setEmergencyContext({ reason });
+    
+    // Store emergency info for the next checklist completion
+    sessionStorage.setItem('emergencyContext', JSON.stringify({ 
+      reason, 
+      reportedAt: new Date().toISOString() 
+    }));
+    
+    toast.success(`🚨 Emergency checklist initiated for ${categoryName}`);
+    
+    // Automatically trigger QR scan for the selected category
+    const category = CATEGORIES.find(cat => cat.name === categoryName);
+    if (category) {
       const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
       window.dispatchEvent(qrEvent);
     }
@@ -167,22 +193,43 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     );
   }
 
-  const isAccessible = currentSession !== null;
+  const isAccessible = currentSession !== null || emergencyContext !== null;
   const completedCount = Object.values(categoryStatuses).filter(s => s.completed).length;
 
   return (
     <div className="space-y-6 p-4">
+      <EmergencyDialog
+        open={showEmergencyDialog}
+        onOpenChange={setShowEmergencyDialog}
+        categories={CATEGORIES.map(c => ({ ...c, icon: c.icon.name, color: c.color }))}
+        onEmergencyStart={handleEmergencyStart}
+      />
+      
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-2xl font-bold">Daily Maintenance Checklists</h2>
-            {currentSession && (
+            {emergencyContext ? (
+              <p className="text-sm text-destructive font-semibold mt-1 flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                EMERGENCY MODE ACTIVE
+              </p>
+            ) : currentSession ? (
               <p className="text-sm text-muted-foreground mt-1">
                 Session {currentSession} of 4 • {formatTimeSlot(currentSession)} • Progress: {completedCount}/6
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowEmergencyDialog(true)} 
+              variant="destructive" 
+              size="mobile"
+              className="flex items-center gap-2"
+            >
+              <AlertTriangle className="h-5 w-5" />
+              Report Emergency
+            </Button>
             <Button onClick={onScanQR} variant="industrial" size="mobile" disabled={!isAccessible}>
               <QrCode className="mr-2 h-5 w-5" />
               Scan Equipment QR
