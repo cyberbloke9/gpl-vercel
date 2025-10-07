@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      checklist_issues: {
+        Row: {
+          assigned_to: string | null
+          checklist_id: string | null
+          created_at: string | null
+          description: string
+          id: string
+          issue_number: string
+          item_name: string
+          module: Database["public"]["Enums"]["module_type"]
+          priority: Database["public"]["Enums"]["issue_priority"]
+          reported_at: string | null
+          reported_by: string
+          reported_by_name: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          response_id: string | null
+          section_name: string
+          status: Database["public"]["Enums"]["issue_status"] | null
+          unit: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          checklist_id?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          issue_number: string
+          item_name: string
+          module: Database["public"]["Enums"]["module_type"]
+          priority: Database["public"]["Enums"]["issue_priority"]
+          reported_at?: string | null
+          reported_by: string
+          reported_by_name: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_id?: string | null
+          section_name: string
+          status?: Database["public"]["Enums"]["issue_status"] | null
+          unit?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          checklist_id?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          issue_number?: string
+          item_name?: string
+          module?: Database["public"]["Enums"]["module_type"]
+          priority?: Database["public"]["Enums"]["issue_priority"]
+          reported_at?: string | null
+          reported_by?: string
+          reported_by_name?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_id?: string | null
+          section_name?: string
+          status?: Database["public"]["Enums"]["issue_status"] | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_issues_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "daily_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_issues_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           category: string
@@ -60,6 +141,158 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      checklist_media: {
+        Row: {
+          duration: number | null
+          file_size: number | null
+          id: string
+          media_type: string
+          response_id: string
+          storage_path: string
+          thumbnail_path: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          duration?: number | null
+          file_size?: number | null
+          id?: string
+          media_type: string
+          response_id: string
+          storage_path: string
+          thumbnail_path?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          duration?: number | null
+          file_size?: number | null
+          id?: string
+          media_type?: string
+          response_id?: string
+          storage_path?: string
+          thumbnail_path?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_media_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_responses: {
+        Row: {
+          checklist_id: string
+          created_at: string | null
+          has_issue: boolean | null
+          id: string
+          numerical_value: number | null
+          remarks: string | null
+          response_value: string | null
+          template_id: string
+          unit: string | null
+          updated_at: string | null
+          validation_status: string | null
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string | null
+          has_issue?: boolean | null
+          id?: string
+          numerical_value?: number | null
+          remarks?: string | null
+          response_value?: string | null
+          template_id: string
+          unit?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string | null
+          has_issue?: boolean | null
+          id?: string
+          numerical_value?: number | null
+          remarks?: string | null
+          response_value?: string | null
+          template_id?: string
+          unit?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_responses_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "daily_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_responses_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          applies_to_unit: string[] | null
+          conditional_logic: Json | null
+          created_at: string | null
+          field_type: Database["public"]["Enums"]["field_type"]
+          id: string
+          interval_days: number | null
+          is_conditional: boolean | null
+          is_photo_required: boolean | null
+          is_video_required: boolean | null
+          item_description: string | null
+          item_name: string
+          module: Database["public"]["Enums"]["module_type"]
+          section_name: string
+          sort_order: number | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          applies_to_unit?: string[] | null
+          conditional_logic?: Json | null
+          created_at?: string | null
+          field_type: Database["public"]["Enums"]["field_type"]
+          id?: string
+          interval_days?: number | null
+          is_conditional?: boolean | null
+          is_photo_required?: boolean | null
+          is_video_required?: boolean | null
+          item_description?: string | null
+          item_name: string
+          module: Database["public"]["Enums"]["module_type"]
+          section_name: string
+          sort_order?: number | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          applies_to_unit?: string[] | null
+          conditional_logic?: Json | null
+          created_at?: string | null
+          field_type?: Database["public"]["Enums"]["field_type"]
+          id?: string
+          interval_days?: number | null
+          is_conditional?: boolean | null
+          is_photo_required?: boolean | null
+          is_video_required?: boolean | null
+          item_description?: string | null
+          item_name?: string
+          module?: Database["public"]["Enums"]["module_type"]
+          section_name?: string
+          sort_order?: number | null
+          validation_rules?: Json | null
+        }
+        Relationships: []
       }
       checklists: {
         Row: {
@@ -207,6 +440,51 @@ export type Database = {
           },
         ]
       }
+      daily_checklists: {
+        Row: {
+          checklist_date: string
+          completed_at: string | null
+          completed_items: number | null
+          flagged_issues_count: number | null
+          id: string
+          module_progress: Json | null
+          operator_name: string
+          shift: string | null
+          started_at: string | null
+          status: string | null
+          total_items: number | null
+          user_id: string
+        }
+        Insert: {
+          checklist_date: string
+          completed_at?: string | null
+          completed_items?: number | null
+          flagged_issues_count?: number | null
+          id?: string
+          module_progress?: Json | null
+          operator_name: string
+          shift?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_items?: number | null
+          user_id: string
+        }
+        Update: {
+          checklist_date?: string
+          completed_at?: string | null
+          completed_items?: number | null
+          flagged_issues_count?: number | null
+          id?: string
+          module_progress?: Json | null
+          operator_name?: string
+          shift?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_items?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           category: string
@@ -236,6 +514,53 @@ export type Database = {
           qr_code?: string
         }
         Relationships: []
+      }
+      interval_reminders: {
+        Row: {
+          created_at: string | null
+          id: string
+          interval_days: number
+          last_completed_date: string | null
+          next_due_date: string
+          notification_sent: boolean | null
+          reminder_type: string
+          status: string | null
+          template_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interval_days: number
+          last_completed_date?: string | null
+          next_due_date: string
+          notification_sent?: boolean | null
+          reminder_type: string
+          status?: string | null
+          template_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interval_days?: number
+          last_completed_date?: string | null
+          next_due_date?: string
+          notification_sent?: boolean | null
+          reminder_type?: string
+          status?: string | null
+          template_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interval_reminders_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       issues: {
         Row: {
@@ -330,21 +655,18 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
-          role: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           full_name: string
           id: string
-          role?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           full_name?: string
           id?: string
-          role?: string
           updated_at?: string
         }
         Relationships: []
@@ -388,18 +710,68 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_issue_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_name: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "supervisor" | "operator"
+      field_type:
+        | "text"
+        | "numerical"
+        | "dropdown"
+        | "checkbox"
+        | "photo"
+        | "video"
+        | "range_numerical"
+      issue_priority: "low" | "medium" | "high" | "critical"
+      issue_status: "reported" | "in_progress" | "resolved" | "closed"
+      module_type:
+        | "turbine_opu_cooling"
+        | "generator"
+        | "dewatering_sump"
+        | "electrical_systems"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -526,6 +898,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "supervisor", "operator"],
+      field_type: [
+        "text",
+        "numerical",
+        "dropdown",
+        "checkbox",
+        "photo",
+        "video",
+        "range_numerical",
+      ],
+      issue_priority: ["low", "medium", "high", "critical"],
+      issue_status: ["reported", "in_progress", "resolved", "closed"],
+      module_type: [
+        "turbine_opu_cooling",
+        "generator",
+        "dewatering_sump",
+        "electrical_systems",
+      ],
+    },
   },
 } as const
