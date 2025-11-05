@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle, Clock, AlertTriangle } from "lucide-react";
+import { Activity, Droplet, Wind, Zap, Shield, CheckCircle2, Lock, QrCode, PlayCircle, Clock, AlertTriangle, LucideIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,43 +10,10 @@ import { toast } from "sonner";
 import { getCurrentSession, getNextTimeSlot, formatTimeSlot } from "@/utils/timeSlots";
 import { EmergencyDialog } from "./EmergencyDialog";
 import { format } from "date-fns";
-
-interface Checklist {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-}
-
-interface CategoryStatus {
-  unlocked: boolean;
-  completed: boolean;
-  unlockedAt?: string;
-  completedAt?: string;
-}
-
-interface Equipment {
-  id: string;
-  name: string;
-  qr_code: string;
-  location: string | null;
-  description: string | null;
-}
-
-interface CategoryWithIcon {
-  name: string;
-  icon: any;
-  color: string;
-  qrCode: string;
-}
-
-interface CategoryDashboardProps {
-  onStartChecklist: (checklist: Checklist) => void;
-  onScanQR: () => void;
-}
+import type { Checklist, CategoryStatus, Equipment, CategoryWithIcon, CategoryDashboardProps } from "@/types";
 
 // Icon mapping function based on equipment name
-const getIconForEquipment = (name: string): { icon: any; color: string } => {
+const getIconForEquipment = (name: string): { icon: LucideIcon; color: string } => {
   if (name.toLowerCase().includes('turbine')) {
     return { icon: Activity, color: 'text-primary' };
   } else if (name.toLowerCase().includes('oil') || name.toLowerCase().includes('pressure')) {
@@ -94,7 +61,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     setNextSlot(next);
   };
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       // Load equipment from database
       const { data: equipmentData, error: equipmentError } = await supabase
@@ -212,7 +179,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
     }
   };
 
-  const handleEmergencyStart = async (categoryName: string, reason: string) => {
+  const handleEmergencyStart = async (categoryName: string, reason: string): Promise<void> => {
     // Set emergency context
     setEmergencyContext({ reason });
 

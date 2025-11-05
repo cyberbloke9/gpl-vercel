@@ -9,17 +9,7 @@ import { format } from "date-fns";
 import { generateReportHTML, downloadReport } from "@/utils/reportGenerator";
 import { downloadQRCodeSheet } from "@/utils/qrCodeGenerator";
 import { toast } from "sonner";
-
-interface Report {
-  id: string;
-  title: string;
-  report_type: 'daily' | 'weekly' | 'monthly' | 'emergency' | 'custom';
-  generated_at: string;
-  date_from: string;
-  date_to: string;
-  summary?: any;
-  generated_by_name?: string;
-}
+import type { Report } from "@/types";
 
 export const ReportsViewer = () => {
   const { user } = useAuth();
@@ -32,7 +22,7 @@ export const ReportsViewer = () => {
     }
   }, [user]);
 
-  const loadReports = async () => {
+  const loadReports = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('reports')
@@ -61,7 +51,7 @@ export const ReportsViewer = () => {
     }
   };
 
-  const handleGenerateReport = async (type: 'daily' | 'weekly' | 'monthly') => {
+  const handleGenerateReport = async (type: 'daily' | 'weekly' | 'monthly'): Promise<void> => {
     try {
       const now = new Date();
       let dateFrom = new Date();
@@ -135,7 +125,7 @@ export const ReportsViewer = () => {
     }
   };
 
-  const handleDownloadReport = async (report: Report) => {
+  const handleDownloadReport = async (report: Report): Promise<void> => {
     try {
       toast.loading('Generating report document...');
 
@@ -167,7 +157,7 @@ export const ReportsViewer = () => {
       if (issuesError) throw issuesError;
 
       // Transform data to match expected format
-      const transformedChecklists = (completedChecklists || []).map((c: any) => ({
+      const transformedChecklists = (completedChecklists || []).map((c) => ({
         ...c,
         items: c.completed_items || []
       }));

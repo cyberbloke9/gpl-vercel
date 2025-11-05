@@ -14,33 +14,38 @@ import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrentSession } from "@/utils/timeSlots";
 import { format } from "date-fns";
+import type {
+  Profile,
+  Checklist,
+  ChecklistItem,
+  CompletedItem,
+  ChecklistResult,
+  EmergencyContext,
+  Equipment,
+} from "@/types";
 
 // BUG FIX #5: Define constant for total categories instead of magic number
 const TOTAL_CHECKLIST_CATEGORIES = 6;
 
-interface ChecklistItem {
-  id: string;
-  title: string;
-  description: string;
-  sort_order: number;
-  category: string;
-  expected_value: string | null;
-  unit: string | null;
-  icon: string | null;
+// Declare custom event for QR simulation
+declare global {
+  interface WindowEventMap {
+    simulateQRScan: CustomEvent<string>;
+  }
 }
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('checklists');
-  const [showQRScanner, setShowQRScanner] = useState(false);
-  const [showChecklist, setShowChecklist] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [currentChecklist, setCurrentChecklist] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<string>('checklists');
+  const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
+  const [showChecklist, setShowChecklist] = useState<boolean>(false);
+  const [showSummary, setShowSummary] = useState<boolean>(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [currentChecklist, setCurrentChecklist] = useState<Checklist | null>(null);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [completedItems, setCompletedItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [completedItems, setCompletedItems] = useState<CompletedItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (!user) {
@@ -50,7 +55,7 @@ const Index = () => {
     loadData();
   }, [user, navigate]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       // Load user profile
       const { data: profileData, error: profileError } = await supabase
@@ -60,7 +65,7 @@ const Index = () => {
         .single();
 
       if (profileError) throw profileError;
-      setProfile(profileData);
+      setProfile(profileData as Profile);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error("Failed to load data");
@@ -69,7 +74,7 @@ const Index = () => {
     }
   };
 
-  const handleQRScan = async (qrCode: string) => {
+  const handleQRScan = async (qrCode: string): Promise<void> => {
     try {
       // Find equipment by QR code
       const { data: equipment, error: equipmentError } = await supabase
@@ -107,11 +112,18 @@ const Index = () => {
 
       if (itemsError) throw itemsError;
 
-      setCurrentChecklist({ ...checklist, equipment, category: equipment.category });
-      setChecklistItems(items || []);
+      const typedEquipment = equipment as Equipment;
+      const typedChecklist: Checklist = {
+        ...checklist,
+        equipment: typedEquipment,
+        category: typedEquipment.category,
+      };
+
+      setCurrentChecklist(typedChecklist);
+      setChecklistItems((items || []) as ChecklistItem[]);
       setShowQRScanner(false);
       setShowChecklist(true);
-      toast.success(`✅ ${equipment.category} unlocked! Starting checklist...`);
+      toast.success(`✅ ${typedEquipment.category} unlocked! Starting checklist...`);
     } catch (error) {
       console.error('Error handling QR scan:', error);
       toast.error("Failed to load checklist");
@@ -121,16 +133,17 @@ const Index = () => {
 
   // Listen for simulated QR scans (for testing)
   useEffect(() => {
-    const handleSimulatedScan = (event: CustomEvent) => {
-      handleQRScan(event.detail);
+    const handleSimulatedScan = (event: Event): void => {
+      const customEvent = event as CustomEvent<string>;
+      handleQRScan(customEvent.detail);
     };
-    window.addEventListener('simulateQRScan' as any, handleSimulatedScan);
+    window.addEventListener('simulateQRScan', handleSimulatedScan);
     return () => {
-      window.removeEventListener('simulateQRScan' as any, handleSimulatedScan);
+      window.removeEventListener('simulateQRScan', handleSimulatedScan);
     };
   }, [user]);
 
-  const handleStartChecklist = async (checklist: any) => {
+  const handleStartChecklist = async (checklist: Checklist): Promise<void> => {
     try {
       // Check if checklist is already completed for current session
       const currentSession = getCurrentSession();
@@ -160,8 +173,8 @@ const Index = () => {
           completed_by_name: existingCompletion.completed_by_name,
           session_number: existingCompletion.session_number,
         });
-        setChecklistItems(items || []);
-        setCompletedItems(existingCompletion.completed_items || []);
+        setChecklistItems((items || []) as ChecklistItem[]);
+        setCompletedItems((existingCompletion.completed_items || []) as CompletedItem[]);
         setShowSummary(true);
         return;
       }
@@ -176,7 +189,7 @@ const Index = () => {
       if (error) throw error;
 
       setCurrentChecklist(checklist);
-      setChecklistItems(items || []);
+      setChecklistItems((items || []) as ChecklistItem[]);
       setShowChecklist(true);
     } catch (error) {
       console.error('Error loading checklist items:', error);
@@ -184,7 +197,7 @@ const Index = () => {
     }
   };
 
-  const handleCompleteChecklist = async (results: any[]) => {
+  const handleCompleteChecklist = async (results: ChecklistResult[]): Promise<void> => {
     // BUG FIX #4: Add try-catch-finally to ensure emergency context is always cleared
     try {
       // Get current user's name for audit trail
@@ -193,7 +206,9 @@ const Index = () => {
 
       // Check for emergency context
       const emergencyContextStr = sessionStorage.getItem('emergencyContext');
-      const emergencyContext = emergencyContextStr ? JSON.parse(emergencyContextStr) : null;
+      const emergencyContext: EmergencyContext | null = emergencyContextStr
+        ? JSON.parse(emergencyContextStr) as EmergencyContext
+        : null;
 
       // Allow completion if either in valid session OR in emergency mode
       if (!currentSession && !emergencyContext) {
@@ -313,7 +328,7 @@ const Index = () => {
     }
   };
 
-  const checkAndGenerateReport = async (sessionNumber: number) => {
+  const checkAndGenerateReport = async (sessionNumber: number): Promise<void> => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);

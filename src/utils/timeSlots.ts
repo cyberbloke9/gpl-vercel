@@ -1,4 +1,5 @@
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Time slot management for IST timezone (UTC+5:30)
 export const TIME_SLOTS = [
@@ -75,7 +76,7 @@ export const formatTimeSlot = (sessionNumber: number): string => {
 export const hasCompletedSession = async (
   userId: string,
   sessionNumber: number,
-  supabase: any
+  supabase: SupabaseClient
 ): Promise<boolean> => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
