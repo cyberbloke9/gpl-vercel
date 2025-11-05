@@ -1,18 +1,13 @@
-# Welcome to your Lovable project
+# Welcome to a Hydel Power Plant Management System 
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/14f6409f-0e28-4ba3-a687-7277d5489a36
+**URL**: gpl-org.org
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/14f6409f-0e28-4ba3-a687-7277d5489a36) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
 
 **Use your preferred IDE**
 
