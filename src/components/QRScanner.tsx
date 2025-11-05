@@ -25,13 +25,24 @@ export const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
         
         // Request camera permissions and start scanning
         const cameras = await Html5Qrcode.getCameras();
-        
+
         if (!cameras || cameras.length === 0) {
           throw new Error("No cameras found on device");
         }
 
-        // Prefer back camera on mobile devices
-        const cameraId = cameras.length > 1 ? cameras[1].id : cameras[0].id;
+        // BUG FIX: Prefer back camera on mobile devices by checking camera labels
+        // Look for "back" or "rear" in camera label, otherwise use first camera
+        let cameraId = cameras[0].id;
+        const backCamera = cameras.find(camera =>
+          camera.label && (
+            camera.label.toLowerCase().includes('back') ||
+            camera.label.toLowerCase().includes('rear') ||
+            camera.label.toLowerCase().includes('environment')
+          )
+        );
+        if (backCamera) {
+          cameraId = backCamera.id;
+        }
 
         await scannerRef.current.start(
           cameraId,

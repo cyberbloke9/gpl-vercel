@@ -15,6 +15,9 @@ import { toast } from "sonner";
 import { getCurrentSession } from "@/utils/timeSlots";
 import { format } from "date-fns";
 
+// BUG FIX #5: Define constant for total categories instead of magic number
+const TOTAL_CHECKLIST_CATEGORIES = 6;
+
 interface ChecklistItem {
   id: string;
   title: string;
@@ -81,15 +84,16 @@ const Index = () => {
         return;
       }
 
-      // Find checklist for this equipment's category
+      // BUG FIX #1 & #7: Use equipment_id foreign key for exact matching instead of fuzzy title matching
+      // This prevents matching wrong checklists and uses proper database relationships
       const { data: checklist, error: checklistError } = await supabase
         .from('checklists')
         .select('*')
-        .ilike('title', `%${equipment.category}%`)
+        .eq('equipment_id', equipment.id)
         .single();
 
       if (checklistError || !checklist) {
-        toast.error("No checklist found for this equipment category");
+        toast.error("No checklist found for this equipment");
         setShowQRScanner(false);
         return;
       }
@@ -181,15 +185,16 @@ const Index = () => {
   };
 
   const handleCompleteChecklist = async (results: any[]) => {
+    // BUG FIX #4: Add try-catch-finally to ensure emergency context is always cleared
     try {
       // Get current user's name for audit trail
       const userName = profile?.full_name || 'Unknown User';
       const currentSession = getCurrentSession();
-      
+
       // Check for emergency context
       const emergencyContextStr = sessionStorage.getItem('emergencyContext');
       const emergencyContext = emergencyContextStr ? JSON.parse(emergencyContextStr) : null;
-      
+
       // Allow completion if either in valid session OR in emergency mode
       if (!currentSession && !emergencyContext) {
         toast.error("Cannot complete checklist outside of scheduled time slots");
@@ -199,13 +204,21 @@ const Index = () => {
       // Format time slot for storage (e.g., "08:00", "12:00", "17:30", "23:45")
       const timeSlot = format(new Date(), 'HH:mm');
 
+      // BUG FIX #2: Validate equipment ID before insert to prevent undefined values
+      const equipmentId = currentChecklist?.equipment?.id;
+      if (!equipmentId) {
+        console.error('Missing equipment ID in checklist:', currentChecklist);
+        toast.error("Cannot complete checklist: Equipment information is missing");
+        throw new Error("Equipment ID is required but was undefined");
+      }
+
       // Create completed checklist record with session tracking
       const { data: completedChecklist, error: checklistError } = await supabase
         .from('completed_checklists')
         .insert({
           checklist_id: currentChecklist.id,
           user_id: user?.id,
-          equipment_id: currentChecklist.equipment?.id,
+          equipment_id: equipmentId, // Now validated to be defined
           notes: results.find(r => r.notes)?.notes || null,
           category_unlocked_at: new Date().toISOString(),
           completed_by_name: userName,
@@ -237,41 +250,66 @@ const Index = () => {
 
       if (itemsError) throw itemsError;
 
-      // Create issue records for failed items
+      // BUG FIX #3: Create issue records for failed items with correct mapping
+      // Find matching insertedItem by checklist_item_id instead of relying on array index
       const failedItems = results.filter(r => r.status === 'fail');
       if (failedItems.length > 0 && insertedItems) {
-        const issues = failedItems.map((result, index) => ({
-          completed_item_id: insertedItems[index].id,
-          description: result.notes || 'Item marked as failed',
-          priority: emergencyContext ? 'critical' : 'high',
-          reported_by: user?.id,
-          reported_by_name: userName,
-          reported_at: new Date().toISOString(),
-        }));
+        const issues = failedItems.map((result) => {
+          // Find the corresponding inserted item by matching checklist_item_id
+          const matchingInsertedItem = insertedItems.find(
+            item => item.checklist_item_id === result.itemId
+          );
 
-        const { error: issuesError } = await supabase
-          .from('issues')
-          .insert(issues);
+          if (!matchingInsertedItem) {
+            console.error('Could not find matching inserted item for failed item:', result);
+            return null;
+          }
 
-        if (issuesError) console.error('Error creating issues:', issuesError);
+          return {
+            completed_item_id: matchingInsertedItem.id,
+            description: result.notes || 'Item marked as failed',
+            priority: emergencyContext ? 'critical' : 'high',
+            reported_by: user?.id,
+            reported_by_name: userName,
+            reported_at: new Date().toISOString(),
+          };
+        }).filter(issue => issue !== null); // Remove any null entries from mapping failures
+
+        if (issues.length > 0) {
+          const { error: issuesError } = await supabase
+            .from('issues')
+            .insert(issues);
+
+          // BUG FIX #6: Keep console.error and ensure meaningful toast for users
+          if (issuesError) {
+            console.error('Error creating issues:', issuesError);
+            toast.error("Checklist saved but failed to create issue reports. Please contact support.");
+          }
+        }
       }
 
       if (emergencyContext) {
         toast.success("🚨 Emergency checklist completed successfully!");
-        // Clear emergency context
-        sessionStorage.removeItem('emergencyContext');
       } else {
         toast.success("✅ Checklist completed successfully!");
-        // Check if all 6 checklists for this session are completed
+        // Check if all checklists for this session are completed
         await checkAndGenerateReport(currentSession!);
       }
-      
+
       setShowChecklist(false);
       setCurrentChecklist(null);
       loadData();
     } catch (error) {
       console.error('Error completing checklist:', error);
-      toast.error("Failed to save checklist");
+      // BUG FIX #6: Provide meaningful error message to user
+      toast.error("Failed to save checklist. Please try again or contact support.");
+    } finally {
+      // BUG FIX #4: Always clear emergency context in finally block
+      // This ensures cleanup happens even if there's an error
+      const emergencyContextStr = sessionStorage.getItem('emergencyContext');
+      if (emergencyContextStr) {
+        sessionStorage.removeItem('emergencyContext');
+      }
     }
   };
 
@@ -290,8 +328,9 @@ const Index = () => {
 
       if (countError) throw countError;
 
-      // If all 6 checklists are completed, generate report
-      if (sessionCompletions && sessionCompletions.length === 6) {
+      // BUG FIX #5: Use constant instead of magic number
+      // If all checklists are completed, generate report
+      if (sessionCompletions && sessionCompletions.length === TOTAL_CHECKLIST_CATEGORIES) {
         // Check if report already exists for this session
         const { data: existingReport } = await supabase
           .from('reports')
@@ -337,12 +376,14 @@ const Index = () => {
             });
 
           if (reportError) throw reportError;
-          
+
           toast.success(`🎉 Session ${sessionNumber} completed! Report generated automatically.`);
         }
       }
     } catch (error) {
       console.error('Error checking/generating report:', error);
+      // BUG FIX #6: Provide meaningful feedback to user
+      toast.error("Session completed but report generation failed. Reports can be generated manually.");
     }
   };
 
@@ -409,9 +450,9 @@ const Index = () => {
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="text-foreground font-medium">{profile?.full_name}</span>
               </div>
-              <Button 
-                onClick={() => signOut()} 
-                variant="ghost" 
+              <Button
+                onClick={() => signOut()}
+                variant="ghost"
                 size="icon"
                 className="hover:bg-destructive/10 hover:text-destructive h-9 w-9 sm:h-10 sm:w-10"
               >
@@ -428,7 +469,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto max-w-7xl">
         {activeTab === 'checklists' && (
-          <CategoryDashboard 
+          <CategoryDashboard
             onStartChecklist={handleStartChecklist}
             onScanQR={() => setShowQRScanner(true)}
           />

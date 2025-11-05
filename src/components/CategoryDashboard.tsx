@@ -25,23 +25,49 @@ interface CategoryStatus {
   completedAt?: string;
 }
 
+interface Equipment {
+  id: string;
+  name: string;
+  qr_code: string;
+  location: string | null;
+  description: string | null;
+}
+
+interface CategoryWithIcon {
+  name: string;
+  icon: any;
+  color: string;
+  qrCode: string;
+}
+
 interface CategoryDashboardProps {
   onStartChecklist: (checklist: Checklist) => void;
   onScanQR: () => void;
 }
 
-const CATEGORIES = [
-  { name: "Turbine System", icon: Activity, color: "text-primary", qrCode: "TURB-2025-001" },
-  { name: "Oil Pressure Unit", icon: Droplet, color: "text-warning", qrCode: "OPU-2025-001" },
-  { name: "Cooling System", icon: Wind, color: "text-info", qrCode: "CS-2025-001" },
-  { name: "Generator", icon: Zap, color: "text-success", qrCode: "GEN-2025-001" },
-  { name: "Electrical Systems", icon: Shield, color: "text-secondary", qrCode: "ELEC-2025-001" },
-  { name: "Safety & General", icon: CheckCircle2, color: "text-muted-foreground", qrCode: "SAFE-2025-001" }
-];
+// Icon mapping function based on equipment name
+const getIconForEquipment = (name: string): { icon: any; color: string } => {
+  if (name.toLowerCase().includes('turbine')) {
+    return { icon: Activity, color: 'text-primary' };
+  } else if (name.toLowerCase().includes('oil') || name.toLowerCase().includes('pressure')) {
+    return { icon: Droplet, color: 'text-warning' };
+  } else if (name.toLowerCase().includes('cooling')) {
+    return { icon: Wind, color: 'text-info' };
+  } else if (name.toLowerCase().includes('generator')) {
+    return { icon: Zap, color: 'text-success' };
+  } else if (name.toLowerCase().includes('electrical')) {
+    return { icon: Shield, color: 'text-secondary' };
+  } else if (name.toLowerCase().includes('safety') || name.toLowerCase().includes('general')) {
+    return { icon: CheckCircle2, color: 'text-muted-foreground' };
+  }
+  // Default fallback
+  return { icon: CheckCircle2, color: 'text-muted-foreground' };
+};
 
 export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashboardProps) => {
   const { user } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [categories, setCategories] = useState<CategoryWithIcon[]>([]);
   const [categoryStatuses, setCategoryStatuses] = useState<Record<string, CategoryStatus>>({});
   const [loading, setLoading] = useState(true);
   const [selectedSimulation, setSelectedSimulation] = useState<string>("");
@@ -70,6 +96,27 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
 
   const loadData = async () => {
     try {
+      // Load equipment from database
+      const { data: equipmentData, error: equipmentError } = await supabase
+        .from('equipment')
+        .select('*')
+        .order('name');
+
+      if (equipmentError) throw equipmentError;
+
+      // Map equipment to categories with icons
+      const loadedCategories: CategoryWithIcon[] = (equipmentData || []).map((equipment: Equipment) => {
+        const { icon, color } = getIconForEquipment(equipment.name);
+        return {
+          name: equipment.name,
+          icon: icon,
+          color: color,
+          qrCode: equipment.qr_code
+        };
+      });
+
+      setCategories(loadedCategories);
+
       // Load all checklists
       const { data: checklistsData, error: checklistsError } = await supabase
         .from('checklists')
@@ -80,7 +127,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
 
       const categorizedChecklists = (checklistsData || []).map(checklist => ({
         ...checklist,
-        category: checklist.title.replace(' Checklist', '')
+        category: checklist.title.replace(' Checklist', '').replace(' Inspection', '')
       }));
 
       setChecklists(categorizedChecklists);
@@ -100,16 +147,16 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
 
       // Build status map
       const statusMap: Record<string, CategoryStatus> = {};
-      CATEGORIES.forEach(cat => {
+      loadedCategories.forEach(cat => {
         statusMap[cat.name] = { unlocked: false, completed: false };
       });
 
       // Check if current session is completed
       const currentSessionCompletions = completedData?.filter(c => c.session_number === session) || [];
-      setSessionCompleted(currentSessionCompletions.length === 6);
+      setSessionCompleted(currentSessionCompletions.length === loadedCategories.length);
 
       categorizedChecklists.forEach(checklist => {
-        const completed = completedData?.find(c => 
+        const completed = completedData?.find(c =>
           c.checklist_id === checklist.id && c.session_number === session
         );
         if (completed) {
@@ -155,10 +202,10 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
       toast.error(`Checklists are only available during scheduled time slots. Next slot: ${nextSlot?.time}`);
       return;
     }
-    const category = CATEGORIES.find(cat => cat.name === selectedSimulation);
+    const category = categories.find(cat => cat.name === selectedSimulation);
     if (category) {
       toast.success(`🎯 Simulating QR scan for ${category.name}...`);
-      const qrEvent = new CustomEvent('simulateQRScan', { 
+      const qrEvent = new CustomEvent('simulateQRScan', {
         detail: category.qrCode,
       });
       window.dispatchEvent(qrEvent);
@@ -168,17 +215,17 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
   const handleEmergencyStart = async (categoryName: string, reason: string) => {
     // Set emergency context
     setEmergencyContext({ reason });
-    
+
     // Store emergency info for the next checklist completion
-    sessionStorage.setItem('emergencyContext', JSON.stringify({ 
-      reason, 
-      reportedAt: new Date().toISOString() 
+    sessionStorage.setItem('emergencyContext', JSON.stringify({
+      reason,
+      reportedAt: new Date().toISOString()
     }));
-    
+
     toast.success(`🚨 Emergency checklist initiated for ${categoryName}`);
-    
+
     // Automatically trigger QR scan for the selected category
-    const category = CATEGORIES.find(cat => cat.name === categoryName);
+    const category = categories.find(cat => cat.name === categoryName);
     if (category) {
       const qrEvent = new CustomEvent('simulateQRScan', { detail: category.qrCode });
       window.dispatchEvent(qrEvent);
@@ -201,7 +248,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
       <EmergencyDialog
         open={showEmergencyDialog}
         onOpenChange={setShowEmergencyDialog}
-        categories={CATEGORIES.map(c => ({ ...c, icon: c.icon.name, color: c.color }))}
+        categories={categories.map(c => ({ ...c, icon: c.icon.name, color: c.color }))}
         onEmergencyStart={handleEmergencyStart}
       />
       
@@ -216,7 +263,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
               </p>
             ) : currentSession ? (
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Session {currentSession} of 4 • {formatTimeSlot(currentSession)} • Progress: {completedCount}/6
+                Session {currentSession} of 4 • {formatTimeSlot(currentSession)} • Progress: {completedCount}/{categories.length}
               </p>
             ) : null}
           </div>
@@ -264,7 +311,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                 <div className="flex-1 min-w-0">
                   <p className="text-sm sm:text-base font-semibold text-success">Session {currentSession} Completed!</p>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    All 6 checklists completed. Next session: {nextSlot?.time}
+                    All {categories.length} checklists completed. Next session: {nextSlot?.time}
                   </p>
                 </div>
               </div>
@@ -291,7 +338,7 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                       <SelectValue placeholder="Select category..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <SelectItem key={cat.name} value={cat.name}>
                           {cat.name}
                         </SelectItem>
@@ -314,15 +361,15 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {CATEGORIES.map((category) => {
+        {categories.map((category) => {
           const Icon = category.icon;
           const status = categoryStatuses[category.name] || { unlocked: false, completed: false };
           const isLocked = !status.unlocked || !isAccessible;
           const isCompleted = status.completed;
 
           return (
-            <Card 
-              key={category.name} 
+            <Card
+              key={category.name}
               className={`transition-all ${isCompleted ? 'border-success bg-success/5' : isLocked ? 'border-border opacity-60' : 'border-primary'}`}
             >
               <CardHeader className="pb-3">
@@ -342,12 +389,12 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                 </div>
                 <CardTitle className="mt-3 sm:mt-4 text-base sm:text-lg">{category.name}</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
-                  {!isAccessible 
-                    ? 'Not available - outside time window' 
-                    : isLocked 
-                      ? 'Scan QR code to unlock' 
-                      : isCompleted 
-                        ? `Completed in session ${currentSession}` 
+                  {!isAccessible
+                    ? 'Not available - outside time window'
+                    : isLocked
+                      ? 'Scan QR code to unlock'
+                      : isCompleted
+                        ? `Completed in session ${currentSession}`
                         : 'Ready for inspection'}
                 </CardDescription>
               </CardHeader>
@@ -358,12 +405,12 @@ export const CategoryDashboard = ({ onStartChecklist, onScanQR }: CategoryDashbo
                   variant={isCompleted ? "outline" : "default"}
                   className="w-full text-sm sm:text-base h-9 sm:h-10"
                 >
-                  {!isAccessible 
-                    ? 'Locked' 
-                    : isCompleted 
-                      ? 'View Checklist' 
-                      : isLocked 
-                        ? 'Locked' 
+                  {!isAccessible
+                    ? 'Locked'
+                    : isCompleted
+                      ? 'View Checklist'
+                      : isLocked
+                        ? 'Locked'
                         : 'Start Checklist'}
                 </Button>
               </CardContent>
