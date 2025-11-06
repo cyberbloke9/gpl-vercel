@@ -1,0 +1,183 @@
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhotoUpload } from "./PhotoUpload";
+import { NumericInput } from "./NumericInput";
+import { IssueFlagger } from "./IssueFlagger";
+
+interface Module3Props {
+  checklistId: string | null;
+  userId: string;
+  data: any;
+  onSave: (data: any) => void;
+  isSaved?: boolean;
+}
+
+export const ChecklistModule3 = ({ checklistId, userId, data, onSave, isSaved = false }: Module3Props) => {
+  const [formData, setFormData] = useState(data);
+  const isInitialized = useRef(false);
+
+  // Only initialize once when component mounts
+  useEffect(() => {
+    if (!isInitialized.current) {
+      setFormData(data);
+      isInitialized.current = true;
+    }
+  }, []);
+
+  // Merge photo uploads without overwriting other fields
+  useEffect(() => {
+    if (isInitialized.current && data) {
+      setFormData((prev: any) => {
+        const merged = { ...prev };
+
+        Object.keys(data || {}).forEach((field) => {
+          if (field.includes("photo") && data[field]) {
+            merged[field] = data[field];
+          }
+        });
+
+        return merged;
+      });
+    }
+  }, [data]);
+
+  const updateField = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const isModule3Complete = () => {
+    return (
+      formData.sump_level_photo &&
+      formData.sump_condition &&
+      formData.motor_1hp_status &&
+      formData.gv_sump_unit1_photo &&
+      formData.gv_sump_unit2_photo
+    );
+  };
+
+  return (
+    <div className="space-y-6 p-4 pb-8">
+      <h2 className="text-2xl font-bold">Module 3: De-watering Sump</h2>
+
+      <div className="space-y-4">
+        <PhotoUpload
+          label="Sump Level & Condition"
+          value={formData.sump_level_photo}
+          onChange={(url) => updateField("sump_level_photo", url)}
+          required
+          userId={userId}
+          checklistId={checklistId || ""}
+          fieldName="sump_level"
+        />
+
+        <div>
+          <Label>Sump Condition Assessment</Label>
+          <Select value={formData.sump_condition || ""} onValueChange={(v) => updateField("sump_condition", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select condition" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="good">Good</SelectItem>
+              <SelectItem value="fair">Fair</SelectItem>
+              <SelectItem value="poor">Poor</SelectItem>
+            </SelectContent>
+          </Select>
+          {checklistId && (
+            <div className="mt-2">
+              <IssueFlagger
+                checklistId={checklistId}
+                module="Module 3"
+                section="De-watering Sump"
+                item="Sump Condition Assessment"
+              />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Label>1 Hp Motors Condition</Label>
+          <Select value={formData.motor_1hp_status || ""} onValueChange={(v) => updateField("motor_1hp_status", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="working">Working</SelectItem>
+              <SelectItem value="not_working">Not Working</SelectItem>
+            </SelectContent>
+          </Select>
+          {checklistId && (
+            <div className="mt-2">
+              <IssueFlagger
+                checklistId={checklistId}
+                module="Module 3"
+                section="De-watering Sump"
+                item="1 Hp Motors Condition"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 bg-muted/30 rounded-lg space-y-4">
+          <h3 className="font-medium">Guide Vane Sump - Unit 1</h3>
+          <NumericInput
+            label="Water Level"
+            value={formData.gv_sump_unit1_level || 0}
+            onChange={(v) => updateField("gv_sump_unit1_level", v)}
+            unit="cm"
+            checklistId={checklistId}
+            module="Module 3"
+            section="Guide Vane Sump - Unit 1"
+            item="Water Level"
+          />
+          <PhotoUpload
+            label="Unit 1 Sump Photo"
+            value={formData.gv_sump_unit1_photo}
+            onChange={(url) => updateField("gv_sump_unit1_photo", url)}
+            required
+            userId={userId}
+            checklistId={checklistId || ""}
+            fieldName="gv_sump_unit1"
+          />
+        </div>
+
+        <div className="p-4 bg-muted/30 rounded-lg space-y-4">
+          <h3 className="font-medium">Guide Vane Sump - Unit 2</h3>
+          <NumericInput
+            label="Water Level"
+            value={formData.gv_sump_unit2_level || 0}
+            onChange={(v) => updateField("gv_sump_unit2_level", v)}
+            unit="cm"
+            checklistId={checklistId}
+            module="Module 3"
+            section="Guide Vane Sump - Unit 2"
+            item="Water Level"
+          />
+          <PhotoUpload
+            label="Unit 2 Sump Photo"
+            value={formData.gv_sump_unit2_photo}
+            onChange={(url) => updateField("gv_sump_unit2_photo", url)}
+            required
+            userId={userId}
+            checklistId={checklistId || ""}
+            fieldName="gv_sump_unit2"
+          />
+        </div>
+      </div>
+
+      <Button 
+        onClick={(e) => {
+          e.preventDefault();
+          onSave(formData);
+        }} 
+        size="lg" 
+        className="w-full" 
+        disabled={!isModule3Complete() || isSaved}
+        type="button"
+      >
+        {isSaved ? "Module 3 Saved ✓" : "Save Module 3"}
+      </Button>
+    </div>
+  );
+};
