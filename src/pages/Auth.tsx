@@ -1,148 +1,147 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Settings, User } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
+import { clearServiceWorkerCache, checkAppVersion } from '@/lib/sw-utils';
 
-const Auth = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const { user, signIn, signUp } = useAuth();
+const signInSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required')
+});
+
+export default function Auth() {
+  const { signIn, user, checkLockoutStatus } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [lockoutInfo, setLockoutInfo] = useState<{ isLockedOut: boolean; timeRemaining: number }>({ 
+    isLockedOut: false, 
+    timeRemaining: 0 
+  });
 
+  // Redirect if already logged in and clear old cache
   useEffect(() => {
     if (user) {
       navigate('/');
     }
+
+    // Clear service worker cache on auth page mount to ensure fresh content
+    clearServiceWorkerCache();
+
+    // Check if user has old version cached
+    const isCurrentVersion = checkAppVersion();
+    if (!isCurrentVersion) {
+      toast.warning('Please refresh this page to get the latest version', {
+        duration: 10000
+      });
+    }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
 
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
-      let result;
-      if (isSignUp) {
-        result = await signUp(email, password, fullName);
-      } else {
-        result = await signIn(email, password);
+      const validatedData = signInSchema.parse({
+        email: signInEmail,
+        password: signInPassword
+      });
+
+      // Check lockout status for this specific email
+      const status = checkLockoutStatus(validatedData.email);
+      if (status.isLockedOut) {
+        setLockoutInfo(status);
+        const minutes = Math.floor(status.timeRemaining / 60);
+        const seconds = status.timeRemaining % 60;
+        const timeMessage = minutes > 0 
+          ? `${minutes} minute${minutes > 1 ? 's' : ''} ${seconds} second${seconds !== 1 ? 's' : ''}`
+          : `${seconds} second${seconds !== 1 ? 's' : ''}`;
+        toast.error(`This account is locked. Try again in ${timeMessage}.`);
+        return;
       }
 
-      if (result.error) {
-        toast({
-          title: "Authentication Error",
-          description: result.error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: isSignUp ? "Account Created" : "Signed In",
-          description: isSignUp 
-            ? "Welcome to MaintenanceCheck! You can now start using the app."
-            : "Welcome back! Redirecting to dashboard...",
-        });
+      setLoading(true);
+      const { error } = await signIn(validatedData.email, validatedData.password);
+      if (error && error.message !== 'Rate limited') {
+        toast.error(error.message || 'Failed to sign in');
+      } else if (!error) {
+        navigate('/');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast.error(error.issues[0].message);
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-card">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-            <Settings className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-bold">MaintenanceCheck</CardTitle>
-            <CardDescription>
-              {isSignUp ? 'Create your account' : 'Sign in to continue'}
-            </CardDescription>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 p-3 sm:p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl text-center">Gayatri Power</CardTitle>
+          <CardDescription className="text-center text-xs sm:text-sm">
+            Daily Checklist & Monitoring System
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+        <CardContent className="p-4 sm:p-6">
+          <form onSubmit={handleSignIn} className="space-y-3 sm:space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="signin-email" className="text-xs sm:text-sm">Email</Label>
+              <Input
+                id="signin-email"
+                type="email"
+                placeholder="your.email@example.com"
+                value={signInEmail}
+                onChange={(e) => setSignInEmail(e.target.value)}
+                required
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signin-password" className="text-xs sm:text-sm">Password</Label>
+              <div className="relative">
                 <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  id="signin-password"
+                  type={showPassword ? "text" : "password"}
+                  value={signInPassword}
+                  onChange={(e) => setSignInPassword(e.target.value)}
                   required
-                  className="h-12"
+                  className="text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
+                </button>
+              </div>
+            </div>
+            {lockoutInfo.isLockedOut && (
+              <div className="text-xs sm:text-sm text-destructive text-center p-2 bg-destructive/10 rounded">
+                Account locked. Try again in {Math.floor(lockoutInfo.timeRemaining / 60)}m {lockoutInfo.timeRemaining % 60}s
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-12"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-12"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="industrial"
-              size="mobile"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSignUp ? 'Create Account' : 'Sign In'}
+            <Button type="submit" className="w-full text-xs sm:text-sm" disabled={loading || lockoutInfo.isLockedOut}>
+              {loading ? 'Signing in...' : lockoutInfo.isLockedOut ? 'Account Locked' : 'Sign In'}
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <Button
-              variant="ghost"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={isLoading}
-            >
-              {isSignUp 
-                ? 'Already have an account? Sign in' 
-                : "Don't have an account? Sign up"
-              }
-            </Button>
-          </div>
+          
+          <p className="text-xs sm:text-sm text-muted-foreground text-center mt-4 sm:mt-6">
+            Need an account? Contact your administrator for access.
+          </p>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default Auth;
+}

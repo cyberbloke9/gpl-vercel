@@ -14,739 +14,747 @@ export type Database = {
   }
   public: {
     Tables: {
-      checklist_issues: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          field_name: string | null
+          id: string
+          module_number: number | null
+          new_value: string | null
+          old_value: string | null
+          record_id: string | null
+          table_name: string | null
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          field_name?: string | null
+          id?: string
+          module_number?: number | null
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+          table_name?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          field_name?: string | null
+          id?: string
+          module_number?: number | null
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+          table_name?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_user_id: string | null
+          timestamp: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      checklists: {
+        Row: {
+          completion_percentage: number | null
+          completion_time: string | null
+          contributors: Json | null
+          created_at: string | null
+          date: string
+          flagged_issues_count: number | null
+          id: string
+          module1_data: Json | null
+          module2_data: Json | null
+          module3_data: Json | null
+          module4_data: Json | null
+          problem_count: number | null
+          problem_fields: Json | null
+          shift: string | null
+          start_time: string | null
+          status: string | null
+          submitted: boolean | null
+          submitted_at: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completion_percentage?: number | null
+          completion_time?: string | null
+          contributors?: Json | null
+          created_at?: string | null
+          date?: string
+          flagged_issues_count?: number | null
+          id?: string
+          module1_data?: Json | null
+          module2_data?: Json | null
+          module3_data?: Json | null
+          module4_data?: Json | null
+          problem_count?: number | null
+          problem_fields?: Json | null
+          shift?: string | null
+          start_time?: string | null
+          status?: string | null
+          submitted?: boolean | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completion_percentage?: number | null
+          completion_time?: string | null
+          contributors?: Json | null
+          created_at?: string | null
+          date?: string
+          flagged_issues_count?: number | null
+          id?: string
+          module1_data?: Json | null
+          module2_data?: Json | null
+          module3_data?: Json | null
+          module4_data?: Json | null
+          problem_count?: number | null
+          problem_fields?: Json | null
+          shift?: string | null
+          start_time?: string | null
+          status?: string | null
+          submitted?: boolean | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flagged_issues: {
         Row: {
           assigned_to: string | null
           checklist_id: string | null
           created_at: string | null
           description: string
           id: string
-          issue_number: string
-          item_name: string
-          module: Database["public"]["Enums"]["module_type"]
-          priority: Database["public"]["Enums"]["issue_priority"]
+          issue_code: string
+          item: string
+          module: string
           reported_at: string | null
-          reported_by: string
-          reported_by_name: string
           resolution_notes: string | null
           resolved_at: string | null
-          resolved_by: string | null
-          response_id: string | null
-          section_name: string
-          status: Database["public"]["Enums"]["issue_status"] | null
-          unit: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          checklist_id?: string | null
-          created_at?: string | null
-          description: string
-          id?: string
-          issue_number: string
-          item_name: string
-          module: Database["public"]["Enums"]["module_type"]
-          priority: Database["public"]["Enums"]["issue_priority"]
-          reported_at?: string | null
-          reported_by: string
-          reported_by_name: string
-          resolution_notes?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          response_id?: string | null
-          section_name: string
-          status?: Database["public"]["Enums"]["issue_status"] | null
-          unit?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          checklist_id?: string | null
-          created_at?: string | null
-          description?: string
-          id?: string
-          issue_number?: string
-          item_name?: string
-          module?: Database["public"]["Enums"]["module_type"]
-          priority?: Database["public"]["Enums"]["issue_priority"]
-          reported_at?: string | null
-          reported_by?: string
-          reported_by_name?: string
-          resolution_notes?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          response_id?: string | null
-          section_name?: string
-          status?: Database["public"]["Enums"]["issue_status"] | null
-          unit?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklist_issues_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "daily_checklists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "checklist_issues_response_id_fkey"
-            columns: ["response_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_responses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      checklist_items: {
-        Row: {
-          category: string
-          checklist_id: string
-          created_at: string
-          description: string | null
-          expected_value: string | null
-          icon: string | null
-          id: string
-          sort_order: number
-          title: string
-          unit: string | null
-        }
-        Insert: {
-          category?: string
-          checklist_id: string
-          created_at?: string
-          description?: string | null
-          expected_value?: string | null
-          icon?: string | null
-          id?: string
-          sort_order?: number
-          title: string
-          unit?: string | null
-        }
-        Update: {
-          category?: string
-          checklist_id?: string
-          created_at?: string
-          description?: string | null
-          expected_value?: string | null
-          icon?: string | null
-          id?: string
-          sort_order?: number
-          title?: string
-          unit?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklist_items_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "checklists"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      checklist_media: {
-        Row: {
-          duration: number | null
-          file_size: number | null
-          id: string
-          media_type: string
-          response_id: string
-          storage_path: string
-          thumbnail_path: string | null
-          uploaded_at: string | null
-        }
-        Insert: {
-          duration?: number | null
-          file_size?: number | null
-          id?: string
-          media_type: string
-          response_id: string
-          storage_path: string
-          thumbnail_path?: string | null
-          uploaded_at?: string | null
-        }
-        Update: {
-          duration?: number | null
-          file_size?: number | null
-          id?: string
-          media_type?: string
-          response_id?: string
-          storage_path?: string
-          thumbnail_path?: string | null
-          uploaded_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklist_media_response_id_fkey"
-            columns: ["response_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_responses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      checklist_responses: {
-        Row: {
-          checklist_id: string
-          created_at: string | null
-          has_issue: boolean | null
-          id: string
-          numerical_value: number | null
-          remarks: string | null
-          response_value: string | null
-          template_id: string
+          section: string
+          severity: string
+          status: string | null
+          transformer_log_id: string | null
           unit: string | null
           updated_at: string | null
-          validation_status: string | null
-        }
-        Insert: {
-          checklist_id: string
-          created_at?: string | null
-          has_issue?: boolean | null
-          id?: string
-          numerical_value?: number | null
-          remarks?: string | null
-          response_value?: string | null
-          template_id: string
-          unit?: string | null
-          updated_at?: string | null
-          validation_status?: string | null
-        }
-        Update: {
-          checklist_id?: string
-          created_at?: string | null
-          has_issue?: boolean | null
-          id?: string
-          numerical_value?: number | null
-          remarks?: string | null
-          response_value?: string | null
-          template_id?: string
-          unit?: string | null
-          updated_at?: string | null
-          validation_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklist_responses_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "daily_checklists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "checklist_responses_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      checklist_templates: {
-        Row: {
-          applies_to_unit: string[] | null
-          conditional_logic: Json | null
-          created_at: string | null
-          field_type: Database["public"]["Enums"]["field_type"]
-          id: string
-          interval_days: number | null
-          is_conditional: boolean | null
-          is_photo_required: boolean | null
-          is_video_required: boolean | null
-          item_description: string | null
-          item_name: string
-          module: Database["public"]["Enums"]["module_type"]
-          section_name: string
-          sort_order: number | null
-          validation_rules: Json | null
-        }
-        Insert: {
-          applies_to_unit?: string[] | null
-          conditional_logic?: Json | null
-          created_at?: string | null
-          field_type: Database["public"]["Enums"]["field_type"]
-          id?: string
-          interval_days?: number | null
-          is_conditional?: boolean | null
-          is_photo_required?: boolean | null
-          is_video_required?: boolean | null
-          item_description?: string | null
-          item_name: string
-          module: Database["public"]["Enums"]["module_type"]
-          section_name: string
-          sort_order?: number | null
-          validation_rules?: Json | null
-        }
-        Update: {
-          applies_to_unit?: string[] | null
-          conditional_logic?: Json | null
-          created_at?: string | null
-          field_type?: Database["public"]["Enums"]["field_type"]
-          id?: string
-          interval_days?: number | null
-          is_conditional?: boolean | null
-          is_photo_required?: boolean | null
-          is_video_required?: boolean | null
-          item_description?: string | null
-          item_name?: string
-          module?: Database["public"]["Enums"]["module_type"]
-          section_name?: string
-          sort_order?: number | null
-          validation_rules?: Json | null
-        }
-        Relationships: []
-      }
-      checklists: {
-        Row: {
-          created_at: string
-          description: string | null
-          equipment_id: string | null
-          frequency: string
-          id: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          equipment_id?: string | null
-          frequency?: string
-          id?: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          equipment_id?: string | null
-          frequency?: string
-          id?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklists_equipment_id_fkey"
-            columns: ["equipment_id"]
-            isOneToOne: false
-            referencedRelation: "equipment"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      completed_checklists: {
-        Row: {
-          category_unlocked_at: string | null
-          checklist_id: string
-          completed_at: string
-          completed_by_name: string | null
-          emergency_reason: string | null
-          emergency_reported_at: string | null
-          equipment_id: string
-          id: string
-          is_emergency: boolean | null
-          notes: string | null
-          session_number: number | null
-          time_slot: string | null
           user_id: string
         }
         Insert: {
-          category_unlocked_at?: string | null
-          checklist_id: string
-          completed_at?: string
-          completed_by_name?: string | null
-          emergency_reason?: string | null
-          emergency_reported_at?: string | null
-          equipment_id: string
+          assigned_to?: string | null
+          checklist_id?: string | null
+          created_at?: string | null
+          description: string
           id?: string
-          is_emergency?: boolean | null
-          notes?: string | null
-          session_number?: number | null
-          time_slot?: string | null
+          issue_code: string
+          item: string
+          module: string
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          section: string
+          severity: string
+          status?: string | null
+          transformer_log_id?: string | null
+          unit?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          category_unlocked_at?: string | null
-          checklist_id?: string
-          completed_at?: string
-          completed_by_name?: string | null
-          emergency_reason?: string | null
-          emergency_reported_at?: string | null
-          equipment_id?: string
+          assigned_to?: string | null
+          checklist_id?: string | null
+          created_at?: string | null
+          description?: string
           id?: string
-          is_emergency?: boolean | null
-          notes?: string | null
-          session_number?: number | null
-          time_slot?: string | null
+          issue_code?: string
+          item?: string
+          module?: string
+          reported_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          section?: string
+          severity?: string
+          status?: string | null
+          transformer_log_id?: string | null
+          unit?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "completed_checklists_checklist_id_fkey"
+            foreignKeyName: "flagged_issues_checklist_id_fkey"
             columns: ["checklist_id"]
             isOneToOne: false
             referencedRelation: "checklists"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "completed_checklists_equipment_id_fkey"
-            columns: ["equipment_id"]
+            foreignKeyName: "flagged_issues_transformer_log_id_fkey"
+            columns: ["transformer_log_id"]
             isOneToOne: false
-            referencedRelation: "equipment"
+            referencedRelation: "transformer_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flagged_issues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      completed_items: {
+      generator_logs: {
         Row: {
-          actual_value: string | null
-          checklist_item_id: string
-          completed_checklist_id: string
-          created_at: string
-          has_issue: boolean | null
-          id: string
-          notes: string | null
-          status: string
-        }
-        Insert: {
-          actual_value?: string | null
-          checklist_item_id: string
-          completed_checklist_id: string
-          created_at?: string
-          has_issue?: boolean | null
-          id?: string
-          notes?: string | null
-          status: string
-        }
-        Update: {
-          actual_value?: string | null
-          checklist_item_id?: string
-          completed_checklist_id?: string
-          created_at?: string
-          has_issue?: boolean | null
-          id?: string
-          notes?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "completed_items_checklist_item_id_fkey"
-            columns: ["checklist_item_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "completed_items_completed_checklist_id_fkey"
-            columns: ["completed_checklist_id"]
-            isOneToOne: false
-            referencedRelation: "completed_checklists"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      daily_checklists: {
-        Row: {
-          checklist_date: string
-          completed_at: string | null
-          completed_items: number | null
-          flagged_issues_count: number | null
-          id: string
-          module_progress: Json | null
-          operator_name: string
-          shift: string | null
-          started_at: string | null
-          status: string | null
-          total_items: number | null
-          user_id: string
-        }
-        Insert: {
-          checklist_date: string
-          completed_at?: string | null
-          completed_items?: number | null
-          flagged_issues_count?: number | null
-          id?: string
-          module_progress?: Json | null
-          operator_name: string
-          shift?: string | null
-          started_at?: string | null
-          status?: string | null
-          total_items?: number | null
-          user_id: string
-        }
-        Update: {
-          checklist_date?: string
-          completed_at?: string | null
-          completed_items?: number | null
-          flagged_issues_count?: number | null
-          id?: string
-          module_progress?: Json | null
-          operator_name?: string
-          shift?: string | null
-          started_at?: string | null
-          status?: string | null
-          total_items?: number | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      equipment: {
-        Row: {
-          category: string
-          created_at: string
-          description: string | null
-          id: string
-          location: string | null
-          name: string
-          qr_code: string
-        }
-        Insert: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          name: string
-          qr_code: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          name?: string
-          qr_code?: string
-        }
-        Relationships: []
-      }
-      interval_reminders: {
-        Row: {
+          avr_field_current: number | null
+          avr_field_voltage: number | null
+          bearing_bgb_high_speed_ch12: number | null
+          bearing_bgb_low_speed_ch11: number | null
+          bearing_g_de_brg_main_ch7: number | null
+          bearing_g_nde_brg_stand_ch8: number | null
+          bearing_tgb_high_speed_ch14: number | null
+          bearing_tgb_low_speed_ch13: number | null
+          bearing_thrust_1_ch9: number | null
+          bearing_thrust_2_ch10: number | null
+          cooling_bearing_flow: number | null
+          cooling_los_flow: number | null
+          cooling_main_pressure: number | null
           created_at: string | null
+          date: string
+          finalized: boolean | null
+          finalized_at: string | null
+          finalized_by: string | null
+          gblos_oil_level: number | null
+          gblos_oil_pressure: number | null
+          gblos_oil_temperature: number | null
+          gen_current_b: number | null
+          gen_current_r: number | null
+          gen_current_y: number | null
+          gen_frequency: number | null
+          gen_kva: number | null
+          gen_kvar: number | null
+          gen_kw: number | null
+          gen_mvah: number | null
+          gen_mvarh: number | null
+          gen_mwh: number | null
+          gen_power_factor: number | null
+          gen_rpm: number | null
+          gen_voltage_br: number | null
+          gen_voltage_ry: number | null
+          gen_voltage_yb: number | null
+          hour: number
           id: string
-          interval_days: number
-          last_completed_date: string | null
-          next_due_date: string
-          notification_sent: boolean | null
-          reminder_type: string
-          status: string | null
-          template_id: string
+          intake_gv_percentage: number | null
+          intake_rb_percentage: number | null
+          intake_water_level: number | null
+          intake_water_pressure: number | null
+          last_modified_by: string | null
+          logged_at: string | null
+          logged_by: string | null
+          remarks: string | null
+          tail_race_net_head: number | null
+          tail_race_water_level: number | null
+          topu_oil_level: number | null
+          topu_oil_pressure: number | null
+          topu_oil_temperature: number | null
+          updated_at: string | null
           user_id: string | null
+          winding_temp_b1: number | null
+          winding_temp_b2: number | null
+          winding_temp_r1: number | null
+          winding_temp_r2: number | null
+          winding_temp_y1: number | null
+          winding_temp_y2: number | null
         }
         Insert: {
+          avr_field_current?: number | null
+          avr_field_voltage?: number | null
+          bearing_bgb_high_speed_ch12?: number | null
+          bearing_bgb_low_speed_ch11?: number | null
+          bearing_g_de_brg_main_ch7?: number | null
+          bearing_g_nde_brg_stand_ch8?: number | null
+          bearing_tgb_high_speed_ch14?: number | null
+          bearing_tgb_low_speed_ch13?: number | null
+          bearing_thrust_1_ch9?: number | null
+          bearing_thrust_2_ch10?: number | null
+          cooling_bearing_flow?: number | null
+          cooling_los_flow?: number | null
+          cooling_main_pressure?: number | null
           created_at?: string | null
+          date?: string
+          finalized?: boolean | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          gblos_oil_level?: number | null
+          gblos_oil_pressure?: number | null
+          gblos_oil_temperature?: number | null
+          gen_current_b?: number | null
+          gen_current_r?: number | null
+          gen_current_y?: number | null
+          gen_frequency?: number | null
+          gen_kva?: number | null
+          gen_kvar?: number | null
+          gen_kw?: number | null
+          gen_mvah?: number | null
+          gen_mvarh?: number | null
+          gen_mwh?: number | null
+          gen_power_factor?: number | null
+          gen_rpm?: number | null
+          gen_voltage_br?: number | null
+          gen_voltage_ry?: number | null
+          gen_voltage_yb?: number | null
+          hour: number
           id?: string
-          interval_days: number
-          last_completed_date?: string | null
-          next_due_date: string
-          notification_sent?: boolean | null
-          reminder_type: string
-          status?: string | null
-          template_id: string
+          intake_gv_percentage?: number | null
+          intake_rb_percentage?: number | null
+          intake_water_level?: number | null
+          intake_water_pressure?: number | null
+          last_modified_by?: string | null
+          logged_at?: string | null
+          logged_by?: string | null
+          remarks?: string | null
+          tail_race_net_head?: number | null
+          tail_race_water_level?: number | null
+          topu_oil_level?: number | null
+          topu_oil_pressure?: number | null
+          topu_oil_temperature?: number | null
+          updated_at?: string | null
           user_id?: string | null
+          winding_temp_b1?: number | null
+          winding_temp_b2?: number | null
+          winding_temp_r1?: number | null
+          winding_temp_r2?: number | null
+          winding_temp_y1?: number | null
+          winding_temp_y2?: number | null
         }
         Update: {
+          avr_field_current?: number | null
+          avr_field_voltage?: number | null
+          bearing_bgb_high_speed_ch12?: number | null
+          bearing_bgb_low_speed_ch11?: number | null
+          bearing_g_de_brg_main_ch7?: number | null
+          bearing_g_nde_brg_stand_ch8?: number | null
+          bearing_tgb_high_speed_ch14?: number | null
+          bearing_tgb_low_speed_ch13?: number | null
+          bearing_thrust_1_ch9?: number | null
+          bearing_thrust_2_ch10?: number | null
+          cooling_bearing_flow?: number | null
+          cooling_los_flow?: number | null
+          cooling_main_pressure?: number | null
           created_at?: string | null
+          date?: string
+          finalized?: boolean | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          gblos_oil_level?: number | null
+          gblos_oil_pressure?: number | null
+          gblos_oil_temperature?: number | null
+          gen_current_b?: number | null
+          gen_current_r?: number | null
+          gen_current_y?: number | null
+          gen_frequency?: number | null
+          gen_kva?: number | null
+          gen_kvar?: number | null
+          gen_kw?: number | null
+          gen_mvah?: number | null
+          gen_mvarh?: number | null
+          gen_mwh?: number | null
+          gen_power_factor?: number | null
+          gen_rpm?: number | null
+          gen_voltage_br?: number | null
+          gen_voltage_ry?: number | null
+          gen_voltage_yb?: number | null
+          hour?: number
           id?: string
-          interval_days?: number
-          last_completed_date?: string | null
-          next_due_date?: string
-          notification_sent?: boolean | null
-          reminder_type?: string
-          status?: string | null
-          template_id?: string
+          intake_gv_percentage?: number | null
+          intake_rb_percentage?: number | null
+          intake_water_level?: number | null
+          intake_water_pressure?: number | null
+          last_modified_by?: string | null
+          logged_at?: string | null
+          logged_by?: string | null
+          remarks?: string | null
+          tail_race_net_head?: number | null
+          tail_race_water_level?: number | null
+          topu_oil_level?: number | null
+          topu_oil_pressure?: number | null
+          topu_oil_temperature?: number | null
+          updated_at?: string | null
           user_id?: string | null
+          winding_temp_b1?: number | null
+          winding_temp_b2?: number | null
+          winding_temp_r1?: number | null
+          winding_temp_r2?: number | null
+          winding_temp_y1?: number | null
+          winding_temp_y2?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "interval_reminders_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      issues: {
-        Row: {
-          completed_item_id: string
-          created_at: string
-          description: string
-          id: string
-          notes: string | null
-          priority: string
-          reported_at: string
-          reported_by: string
-          reported_by_name: string | null
-          resolved_at: string | null
-          resolved_by: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          completed_item_id: string
-          created_at?: string
-          description: string
-          id?: string
-          notes?: string | null
-          priority?: string
-          reported_at?: string
-          reported_by: string
-          reported_by_name?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          completed_item_id?: string
-          created_at?: string
-          description?: string
-          id?: string
-          notes?: string | null
-          priority?: string
-          reported_at?: string
-          reported_by?: string
-          reported_by_name?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "issues_completed_item_id_fkey"
-            columns: ["completed_item_id"]
-            isOneToOne: false
-            referencedRelation: "completed_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      photos: {
-        Row: {
-          caption: string | null
-          completed_item_id: string
-          created_at: string
-          id: string
-          url: string
-        }
-        Insert: {
-          caption?: string | null
-          completed_item_id: string
-          created_at?: string
-          id?: string
-          url: string
-        }
-        Update: {
-          caption?: string | null
-          completed_item_id?: string
-          created_at?: string
-          id?: string
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "photos_completed_item_id_fkey"
-            columns: ["completed_item_id"]
-            isOneToOne: false
-            referencedRelation: "completed_items"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
-          created_at: string
+          created_at: string | null
+          employee_id: string | null
           full_name: string
           id: string
-          updated_at: string
+          shift: string | null
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
+          employee_id?: string | null
           full_name: string
           id: string
-          updated_at?: string
+          shift?: string | null
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
+          employee_id?: string | null
           full_name?: string
           id?: string
-          updated_at?: string
+          shift?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
-      reports: {
+      transformer_logs: {
         Row: {
-          created_at: string
-          date_from: string
-          date_to: string
-          generated_at: string
-          generated_by: string
-          generated_by_name: string | null
+          active_power: number | null
+          cos_phi: number | null
+          created_at: string | null
+          current_b: number | null
+          current_r: number | null
+          current_y: number | null
+          date: string
+          finalized: boolean | null
+          finalized_at: string | null
+          finalized_by: string | null
+          frequency: number | null
+          gen_aux_consumption: number | null
+          gen_check_export: number | null
+          gen_check_import: number | null
+          gen_main_export: number | null
+          gen_main_import: number | null
+          gen_standby_export: number | null
+          gen_standby_import: number | null
+          gen_total_generation: number | null
+          gen_xmer_export: number | null
+          hour: number
           id: string
-          report_type: string
-          summary: Json | null
-          title: string
+          kva: number | null
+          last_modified_by: string | null
+          logged_at: string | null
+          logged_by: string | null
+          ltac_current_b: number | null
+          ltac_current_r: number | null
+          ltac_current_y: number | null
+          ltac_grid_fail_time: string | null
+          ltac_grid_resume_time: string | null
+          ltac_kva: number | null
+          ltac_kvah: number | null
+          ltac_kvar: number | null
+          ltac_kvarh: number | null
+          ltac_kw: number | null
+          ltac_kwh: number | null
+          ltac_oil_temperature: number | null
+          ltac_supply_interruption: string | null
+          ltac_voltage_rb: number | null
+          ltac_voltage_ry: number | null
+          ltac_voltage_yb: number | null
+          mvah: number | null
+          mvarh: number | null
+          mwh: number | null
+          oil_level: string | null
+          oil_temperature: number | null
+          reactive_power: number | null
+          remarks: string | null
+          silica_gel_colour: string | null
+          tap_counter: number | null
+          tap_position: string | null
+          transformer_number: number
+          updated_at: string | null
+          user_id: string | null
+          voltage_rb: number | null
+          voltage_ry: number | null
+          voltage_yb: number | null
+          winding_temperature: number | null
         }
         Insert: {
-          created_at?: string
-          date_from: string
-          date_to: string
-          generated_at?: string
-          generated_by: string
-          generated_by_name?: string | null
+          active_power?: number | null
+          cos_phi?: number | null
+          created_at?: string | null
+          current_b?: number | null
+          current_r?: number | null
+          current_y?: number | null
+          date?: string
+          finalized?: boolean | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          frequency?: number | null
+          gen_aux_consumption?: number | null
+          gen_check_export?: number | null
+          gen_check_import?: number | null
+          gen_main_export?: number | null
+          gen_main_import?: number | null
+          gen_standby_export?: number | null
+          gen_standby_import?: number | null
+          gen_total_generation?: number | null
+          gen_xmer_export?: number | null
+          hour: number
           id?: string
-          report_type?: string
-          summary?: Json | null
-          title: string
+          kva?: number | null
+          last_modified_by?: string | null
+          logged_at?: string | null
+          logged_by?: string | null
+          ltac_current_b?: number | null
+          ltac_current_r?: number | null
+          ltac_current_y?: number | null
+          ltac_grid_fail_time?: string | null
+          ltac_grid_resume_time?: string | null
+          ltac_kva?: number | null
+          ltac_kvah?: number | null
+          ltac_kvar?: number | null
+          ltac_kvarh?: number | null
+          ltac_kw?: number | null
+          ltac_kwh?: number | null
+          ltac_oil_temperature?: number | null
+          ltac_supply_interruption?: string | null
+          ltac_voltage_rb?: number | null
+          ltac_voltage_ry?: number | null
+          ltac_voltage_yb?: number | null
+          mvah?: number | null
+          mvarh?: number | null
+          mwh?: number | null
+          oil_level?: string | null
+          oil_temperature?: number | null
+          reactive_power?: number | null
+          remarks?: string | null
+          silica_gel_colour?: string | null
+          tap_counter?: number | null
+          tap_position?: string | null
+          transformer_number: number
+          updated_at?: string | null
+          user_id?: string | null
+          voltage_rb?: number | null
+          voltage_ry?: number | null
+          voltage_yb?: number | null
+          winding_temperature?: number | null
         }
         Update: {
-          created_at?: string
-          date_from?: string
-          date_to?: string
-          generated_at?: string
-          generated_by?: string
-          generated_by_name?: string | null
+          active_power?: number | null
+          cos_phi?: number | null
+          created_at?: string | null
+          current_b?: number | null
+          current_r?: number | null
+          current_y?: number | null
+          date?: string
+          finalized?: boolean | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          frequency?: number | null
+          gen_aux_consumption?: number | null
+          gen_check_export?: number | null
+          gen_check_import?: number | null
+          gen_main_export?: number | null
+          gen_main_import?: number | null
+          gen_standby_export?: number | null
+          gen_standby_import?: number | null
+          gen_total_generation?: number | null
+          gen_xmer_export?: number | null
+          hour?: number
           id?: string
-          report_type?: string
-          summary?: Json | null
-          title?: string
+          kva?: number | null
+          last_modified_by?: string | null
+          logged_at?: string | null
+          logged_by?: string | null
+          ltac_current_b?: number | null
+          ltac_current_r?: number | null
+          ltac_current_y?: number | null
+          ltac_grid_fail_time?: string | null
+          ltac_grid_resume_time?: string | null
+          ltac_kva?: number | null
+          ltac_kvah?: number | null
+          ltac_kvar?: number | null
+          ltac_kvarh?: number | null
+          ltac_kw?: number | null
+          ltac_kwh?: number | null
+          ltac_oil_temperature?: number | null
+          ltac_supply_interruption?: string | null
+          ltac_voltage_rb?: number | null
+          ltac_voltage_ry?: number | null
+          ltac_voltage_yb?: number | null
+          mvah?: number | null
+          mvarh?: number | null
+          mwh?: number | null
+          oil_level?: string | null
+          oil_temperature?: number | null
+          reactive_power?: number | null
+          remarks?: string | null
+          silica_gel_colour?: string | null
+          tap_counter?: number | null
+          tap_position?: string | null
+          transformer_number?: number
+          updated_at?: string | null
+          user_id?: string | null
+          voltage_rb?: number | null
+          voltage_ry?: number | null
+          voltage_yb?: number | null
+          winding_temperature?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transformer_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
-          assigned_at: string | null
-          assigned_by: string | null
+          created_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
-          assigned_at?: string | null
-          assigned_by?: string | null
+          created_at?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
-          assigned_at?: string | null
-          assigned_by?: string | null
+          created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          checklist_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_activity: string | null
+          module_number: number | null
+          started_at: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          checklist_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity?: string | null
+          module_number?: number | null
+          started_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          checklist_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_activity?: string | null
+          module_number?: number | null
+          started_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      generate_issue_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_current_user_name: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      assign_admin_role: { Args: { _user_email: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -756,22 +764,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "supervisor" | "operator"
-      field_type:
-        | "text"
-        | "numerical"
-        | "dropdown"
-        | "checkbox"
-        | "photo"
-        | "video"
-        | "range_numerical"
-      issue_priority: "low" | "medium" | "high" | "critical"
-      issue_status: "reported" | "in_progress" | "resolved" | "closed"
-      module_type:
-        | "turbine_opu_cooling"
-        | "generator"
-        | "dewatering_sump"
-        | "electrical_systems"
+      app_role: "admin" | "operator" | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -899,24 +892,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "supervisor", "operator"],
-      field_type: [
-        "text",
-        "numerical",
-        "dropdown",
-        "checkbox",
-        "photo",
-        "video",
-        "range_numerical",
-      ],
-      issue_priority: ["low", "medium", "high", "critical"],
-      issue_status: ["reported", "in_progress", "resolved", "closed"],
-      module_type: [
-        "turbine_opu_cooling",
-        "generator",
-        "dewatering_sump",
-        "electrical_systems",
-      ],
+      app_role: ["admin", "operator", "supervisor"],
     },
   },
 } as const
