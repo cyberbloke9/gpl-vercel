@@ -132,10 +132,11 @@ export default function Admin() {
     try {
       const today = getTodayIST();
 
-      // Get total users count
+      // Get operator count (users with operator role)
       const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'operator');
 
     // Get today's checklists with user details
     const { data: checklists } = await supabase
@@ -170,7 +171,7 @@ export default function Admin() {
       .from('transformer_logs')
       .select(`
         *,
-        profiles:user_id (
+        profiles:logged_by (
           full_name,
           employee_id
         )
@@ -220,7 +221,7 @@ export default function Admin() {
       .order('logged_at', { ascending: false });
 
     // Get user profiles for generator logs
-    const generatorUserIds = [...new Set(generatorData?.map(log => log.user_id) || [])];
+    const generatorUserIds = [...new Set(generatorData?.map(log => log.logged_by) || [])];
     const { data: generatorProfiles } = await supabase
       .from('profiles')
       .select('id, full_name, employee_id')
@@ -245,7 +246,7 @@ export default function Admin() {
           total_frequency: 0,
         };
       }
-      const profile = generatorProfilesMap[log.user_id];
+      const profile = generatorProfilesMap[log.logged_by];
       acc[key].users.add(profile?.full_name || 'Unknown');
       if (profile?.employee_id) {
         acc[key].employee_ids.add(profile.employee_id);
@@ -327,7 +328,7 @@ export default function Admin() {
       .from('transformer_logs')
       .select(`
         *,
-        profiles:user_id (
+        profiles:logged_by (
           full_name,
           employee_id
         )
@@ -337,9 +338,9 @@ export default function Admin() {
       .order('hour', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      setSelectedTransformerReport({ 
-        date, 
-        transformerNumber, 
+      setSelectedTransformerReport({
+        date,
+        transformerNumber,
         logs: data,
         userName: data[0].profiles?.full_name,
         employeeId: data[0].profiles?.employee_id
@@ -363,7 +364,7 @@ export default function Admin() {
 
     if (logs && logs.length > 0) {
       // Get user profiles for all logs
-      const userIds = [...new Set(logs.map(log => log.user_id))];
+      const userIds = [...new Set(logs.map(log => log.logged_by))];
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, full_name, employee_id')
@@ -375,9 +376,9 @@ export default function Admin() {
       }, {}) || {};
 
       // Get all unique users who contributed
-      const users = new Set(logs.map(l => profilesMap[l.user_id]?.full_name).filter(Boolean));
-      const employeeIds = new Set(logs.map(l => profilesMap[l.user_id]?.employee_id).filter(Boolean));
-      
+      const users = new Set(logs.map(l => profilesMap[l.logged_by]?.full_name).filter(Boolean));
+      const employeeIds = new Set(logs.map(l => profilesMap[l.logged_by]?.employee_id).filter(Boolean));
+
       setSelectedGeneratorReport({
         date,
         logs: logs as any[],

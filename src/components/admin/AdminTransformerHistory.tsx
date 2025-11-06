@@ -49,7 +49,7 @@ export const AdminTransformerHistory = ({ onViewReport }: AdminTransformerHistor
         .from('transformer_logs')
         .select(`
           *,
-          profiles:user_id (
+          profiles:logged_by (
             full_name,
             employee_id
           )

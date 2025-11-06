@@ -63,7 +63,7 @@ export const AdminGeneratorHistory = ({ onViewReport }: AdminGeneratorHistoryPro
       if (error) throw error;
 
       // Get user profiles
-      const userIds = [...new Set(logsData?.map(log => log.user_id) || [])];
+      const userIds = [...new Set(logsData?.map(log => log.logged_by) || [])];
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, full_name, employee_id')
@@ -77,7 +77,7 @@ export const AdminGeneratorHistory = ({ onViewReport }: AdminGeneratorHistoryPro
       // Group by date only (collective progress across all users)
       const grouped = logsData?.reduce((acc: any, log: any) => {
         const key = log.date;
-        const profile = profilesMap[log.user_id];
+        const profile = profilesMap[log.logged_by];
         if (!acc[key]) {
           acc[key] = {
             date: log.date,
