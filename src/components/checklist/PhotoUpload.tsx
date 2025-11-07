@@ -13,9 +13,21 @@ interface PhotoUploadProps {
   userId: string;
   checklistId: string;
   fieldName: string;
+  onUploadStart?: () => void;
+  onUploadComplete?: (url: string) => Promise<void>;
 }
 
-export const PhotoUpload = ({ label, value, onChange, required, userId, checklistId, fieldName }: PhotoUploadProps) => {
+export const PhotoUpload = ({
+  label,
+  value,
+  onChange,
+  required,
+  userId,
+  checklistId,
+  fieldName,
+  onUploadStart,
+  onUploadComplete
+}: PhotoUploadProps) => {
   const [preview, setPreview] = useState<string | undefined>(value);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,9 +114,20 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
       return;
     }
 
+    // Notify parent that upload is starting
+    if (onUploadStart) {
+      onUploadStart();
+    }
+
     setUploading(true);
 
+    // Block all page interaction during upload to prevent Android Chrome navigation
+    document.body.style.pointerEvents = 'none';
+    document.body.style.opacity = '0.6';
+
     try {
+      toast.info("Uploading photo...", { duration: 30000 });
+
       // Compress image AGGRESSIVELY for Android to avoid memory issues
       let fileToUpload = file;
       if (file.size > 512 * 1024) { // If larger than 512KB, compress
@@ -130,12 +153,22 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
       // Set preview to uploaded URL
       setPreview(url);
 
+      // If parent provided a callback, call it to save to database immediately
+      if (onUploadComplete) {
+        toast.info("Saving to database...", { duration: 5000 });
+        await onUploadComplete(url);
+      }
+
       toast.success("Photo uploaded successfully");
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Failed to upload photo. Please try again.");
       setPreview(value);
     } finally {
+      // Re-enable page interaction
+      document.body.style.pointerEvents = '';
+      document.body.style.opacity = '';
+
       setUploading(false);
 
       // Reset file input

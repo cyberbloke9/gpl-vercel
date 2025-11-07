@@ -69,6 +69,21 @@ export const ChecklistModule1 = ({ checklistId, userId, data, onSave, isSaved = 
     }));
   };
 
+  // Immediate save after photo upload to prevent data loss on Android Chrome
+  const handlePhotoUploadComplete = async (unit: "unit1" | "unit2", section: string, field: string, url: string) => {
+    const updated = {
+      ...formData,
+      [unit]: {
+        ...formData[unit],
+        [section]: {
+          ...formData[unit]?.[section],
+          [field]: url,
+        },
+      },
+    };
+    onSave(updated);
+  };
+
   const renderUnitSection = (unit: "unit1" | "unit2", unitName: string) => (
     <div className="space-y-6">
       <h3 className="font-semibold text-lg">{unitName}</h3>
@@ -109,6 +124,7 @@ export const ChecklistModule1 = ({ checklistId, userId, data, onSave, isSaved = 
           label="Guide Vane Servomotor leakage"
           value={formData[unit]?.turbine?.servomotor_photo}
           onChange={(url) => updateUnit(unit, "turbine", "servomotor_photo", url)}
+          onUploadComplete={async (url) => await handlePhotoUploadComplete(unit, "turbine", "servomotor_photo", url)}
           required
           userId={userId}
           checklistId={checklistId || ""}
@@ -268,6 +284,7 @@ export const ChecklistModule1 = ({ checklistId, userId, data, onSave, isSaved = 
           label="LOS pressure"
           value={formData[unit]?.gearbox?.los_pressure_photo}
           onChange={(url) => updateUnit(unit, "gearbox", "los_pressure_photo", url)}
+          onUploadComplete={async (url) => await handlePhotoUploadComplete(unit, "gearbox", "los_pressure_photo", url)}
           required
           userId={userId}
           checklistId={checklistId || ""}
@@ -347,6 +364,7 @@ export const ChecklistModule1 = ({ checklistId, userId, data, onSave, isSaved = 
           label="Flow indicators"
           value={formData[unit]?.cooling?.flow_indicators_photo}
           onChange={(url) => updateUnit(unit, "cooling", "flow_indicators_photo", url)}
+          onUploadComplete={async (url) => await handlePhotoUploadComplete(unit, "cooling", "flow_indicators_photo", url)}
           required
           userId={userId}
           checklistId={checklistId || ""}
@@ -384,6 +402,7 @@ export const ChecklistModule1 = ({ checklistId, userId, data, onSave, isSaved = 
                 label="Filter Photo (Required for Clean status)"
                 value={formData[unit]?.cooling?.filter_photo}
                 onChange={(url) => updateUnit(unit, "cooling", "filter_photo", url)}
+                onUploadComplete={async (url) => await handlePhotoUploadComplete(unit, "cooling", "filter_photo", url)}
                 required
                 userId={userId}
                 checklistId={checklistId || ""}

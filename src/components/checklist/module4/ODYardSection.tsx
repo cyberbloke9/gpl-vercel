@@ -8,17 +8,39 @@ import { IssueFlagger } from "../IssueFlagger";
 interface ODYardSectionProps {
   data: any;
   onChange: (field: string, value: any) => void;
+  onSave?: (data: any) => void;
   checklistId: string | null;
   userId: string;
 }
 
-export const ODYardSection = ({ data, onChange, checklistId, userId }: ODYardSectionProps) => {
+export const ODYardSection = ({ data, onChange, onSave, checklistId, userId }: ODYardSectionProps) => {
   // Use callback to get fresh state
   const updateNested = (parent: string, field: string, value: any) => {
     onChange(parent, (prevParentData: any) => ({
       ...(prevParentData || {}),
       [field]: value,
     }));
+  };
+
+  // Immediate save after photo upload to prevent data loss on Android Chrome
+  const handlePhotoUploadComplete = async (parent: string, field: string, url: string) => {
+    if (onSave) {
+      const updated = {
+        ...data,
+        [parent]: {
+          ...(data[parent] || {}),
+          [field]: url,
+        },
+      };
+      onSave(updated);
+    }
+  };
+
+  const handlePhotoUploadCompleteSimple = async (field: string, url: string) => {
+    if (onSave) {
+      const updated = { ...data, [field]: url };
+      onSave(updated);
+    }
   };
 
   return (
@@ -103,6 +125,7 @@ export const ODYardSection = ({ data, onChange, checklistId, userId }: ODYardSec
               label="RTCC Panel Position"
               value={data.ptr?.rtcc_photo}
               onChange={(url) => updateNested("ptr", "rtcc_photo", url)}
+              onUploadComplete={async (url) => await handlePhotoUploadComplete("ptr", "rtcc_photo", url)}
               required
               userId={userId}
               checklistId={checklistId || ""}
@@ -191,6 +214,7 @@ export const ODYardSection = ({ data, onChange, checklistId, userId }: ODYardSec
               label="Battery Water Level"
               value={data.diesel_gen?.battery_water_photo}
               onChange={(url) => updateNested("diesel_gen", "battery_water_photo", url)}
+              onUploadComplete={async (url) => await handlePhotoUploadComplete("diesel_gen", "battery_water_photo", url)}
               required
               userId={userId}
               checklistId={checklistId || ""}
@@ -207,6 +231,7 @@ export const ODYardSection = ({ data, onChange, checklistId, userId }: ODYardSec
               label="Grass Growth Check"
               value={data.landscape_photo}
               onChange={(url) => onChange("landscape_photo", url)}
+              onUploadComplete={async (url) => await handlePhotoUploadCompleteSimple("landscape_photo", url)}
               required
               userId={userId}
               checklistId={checklistId || ""}

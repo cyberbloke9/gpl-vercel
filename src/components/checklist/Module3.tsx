@@ -47,6 +47,12 @@ export const ChecklistModule3 = ({ checklistId, userId, data, onSave, isSaved = 
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  // Immediate save after photo upload to prevent data loss on Android Chrome
+  const handlePhotoUploadComplete = async (field: string, url: string) => {
+    const updated = { ...formData, [field]: url };
+    onSave(updated);
+  };
+
   const isModule3Complete = () => {
     return (
       formData.sump_level_photo &&
@@ -66,6 +72,7 @@ export const ChecklistModule3 = ({ checklistId, userId, data, onSave, isSaved = 
           label="Sump Level & Condition"
           value={formData.sump_level_photo}
           onChange={(url) => updateField("sump_level_photo", url)}
+          onUploadComplete={async (url) => await handlePhotoUploadComplete("sump_level_photo", url)}
           required
           userId={userId}
           checklistId={checklistId || ""}
@@ -135,6 +142,7 @@ export const ChecklistModule3 = ({ checklistId, userId, data, onSave, isSaved = 
             label="Unit 1 Sump Photo"
             value={formData.gv_sump_unit1_photo}
             onChange={(url) => updateField("gv_sump_unit1_photo", url)}
+            onUploadComplete={async (url) => await handlePhotoUploadComplete("gv_sump_unit1_photo", url)}
             required
             userId={userId}
             checklistId={checklistId || ""}
@@ -158,6 +166,7 @@ export const ChecklistModule3 = ({ checklistId, userId, data, onSave, isSaved = 
             label="Unit 2 Sump Photo"
             value={formData.gv_sump_unit2_photo}
             onChange={(url) => updateField("gv_sump_unit2_photo", url)}
+            onUploadComplete={async (url) => await handlePhotoUploadComplete("gv_sump_unit2_photo", url)}
             required
             userId={userId}
             checklistId={checklistId || ""}

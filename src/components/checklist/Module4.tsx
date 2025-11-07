@@ -96,6 +96,10 @@ export const ChecklistModule4 = ({ checklistId, userId, data, onSave, isSaved = 
           <ODYardSection
             data={formData.section1_od_yard || {}}
             onChange={(field, value) => updateSection("section1_od_yard", field, value)}
+            onSave={(updatedData) => {
+              setFormData((prev: any) => ({ ...prev, section1_od_yard: updatedData }));
+              onSave({ ...formData, section1_od_yard: updatedData });
+            }}
             checklistId={checklistId}
             userId={userId}
           />

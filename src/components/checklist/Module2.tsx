@@ -67,6 +67,24 @@ export const ChecklistModule2 = ({ checklistId, userId, data, onSave, isSaved = 
     }));
   };
 
+  // Immediate save after photo upload to prevent data loss on Android Chrome
+  const handlePhotoUploadComplete = async (unit: "unit1" | "unit2", section: string, field: string, url: string) => {
+    // Create updated data with the new photo URL
+    const updated = {
+      ...formData,
+      [unit]: {
+        ...formData[unit],
+        [section]: {
+          ...formData[unit]?.[section],
+          [field]: url,
+        },
+      },
+    };
+
+    // Immediately save to database (onSave triggers auto-save)
+    onSave(updated);
+  };
+
   const renderUnitSection = (unit: "unit1" | "unit2", unitName: string) => (
     <div className="space-y-6">
       <h3 className="font-semibold text-lg">{unitName}</h3>
@@ -162,6 +180,7 @@ export const ChecklistModule2 = ({ checklistId, userId, data, onSave, isSaved = 
           label="Power cable inspection (Terminal Box)"
           value={formData[unit]?.interval?.power_cable_photo}
           onChange={(url) => updateUnit(unit, "interval", "power_cable_photo", url)}
+          onUploadComplete={async (url) => await handlePhotoUploadComplete(unit, "interval", "power_cable_photo", url)}
           userId={userId}
           checklistId={checklistId || ""}
           fieldName={`${unit}_interval_power_cable`}
