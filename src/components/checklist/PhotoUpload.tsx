@@ -37,6 +37,60 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
     };
   }, []);
 
+  const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1920;
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error('Compression failed'));
+              }
+            },
+            'image/jpeg',
+            0.8 // 80% quality
+          );
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     const file = e.target.files?.[0];
@@ -48,13 +102,6 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
       return;
     }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      toast.error("Image size must be less than 10MB");
-      return;
-    }
-
     setUploading(true);
 
     try {
@@ -63,13 +110,24 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
         URL.revokeObjectURL(objectUrlRef.current);
       }
 
+      // Compress image for Android devices to avoid memory issues
+      let fileToUpload = file;
+      if (file.size > 1024 * 1024) { // If larger than 1MB, compress
+        try {
+          fileToUpload = await compressImage(file);
+        } catch (compressionError) {
+          console.warn('Compression failed, using original:', compressionError);
+          // Continue with original file if compression fails
+        }
+      }
+
       // Create preview immediately for better UX
-      const previewUrl = URL.createObjectURL(file);
+      const previewUrl = URL.createObjectURL(fileToUpload);
       objectUrlRef.current = previewUrl;
       setPreview(previewUrl);
 
       // Upload to Supabase Storage
-      const url = await uploadMedia(file, userId, checklistId, fieldName);
+      const url = await uploadMedia(fileToUpload, userId, checklistId, fieldName);
 
       // Update parent component with the permanent URL
       onChange(url);

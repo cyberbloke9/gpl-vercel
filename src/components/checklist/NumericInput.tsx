@@ -109,6 +109,19 @@ export const NumericInput = ({
             if (e.key === '-' && e.currentTarget.selectionStart !== 0) {
               e.preventDefault();
             }
+            // Handle Enter key to move to next field
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const form = e.currentTarget.form;
+              if (form) {
+                const inputs = Array.from(form.querySelectorAll('input, select, textarea, button'));
+                const index = inputs.indexOf(e.currentTarget);
+                const nextInput = inputs[index + 1] as HTMLElement;
+                if (nextInput && nextInput.tagName !== 'BUTTON') {
+                  nextInput.focus();
+                }
+              }
+            }
           }}
           onFocus={(e) => e.target.select()}
           disabled={disabled}
