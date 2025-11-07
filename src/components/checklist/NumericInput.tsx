@@ -89,6 +89,7 @@ export const NumericInput = ({
           type="number"
           step="any"
           inputMode="decimal"
+          enterKeyHint="next"
           value={value}
           onChange={(e) => {
             const inputValue = e.target.value;

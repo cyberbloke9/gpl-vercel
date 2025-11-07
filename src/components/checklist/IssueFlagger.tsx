@@ -192,6 +192,7 @@ export const IssueFlagger = ({ checklistId, transformerLogId, module, section, i
                 placeholder="Describe the issue..."
                 maxLength={1000}
                 className="min-h-[100px]"
+                enterKeyHint="done"
               />
               <div className="text-sm text-muted-foreground text-right mt-1">
                 {description.length}/1000 characters
