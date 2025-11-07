@@ -169,29 +169,29 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
             id={`photo-${fieldName}`}
             disabled={uploading}
           />
-          <label htmlFor={`photo-${fieldName}`}>
-            <Button 
-              type="button" 
-              variant="outline" 
-              disabled={uploading}
-              className="cursor-pointer"
-              asChild
-            >
-              <span>
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="mr-2 h-4 w-4" />
-                    Capture Photo
-                  </>
-                )}
-              </span>
-            </Button>
-          </label>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={uploading}
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Camera className="mr-2 h-4 w-4" />
+                Capture Photo
+              </>
+            )}
+          </Button>
         </div>
       )}
     </div>
