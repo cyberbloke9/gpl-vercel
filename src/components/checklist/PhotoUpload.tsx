@@ -92,10 +92,6 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Prevent any default behavior
-    e.preventDefault();
-    e.stopPropagation();
-
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -106,52 +102,47 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
       return;
     }
 
-    // Prevent any further interaction during upload
     setUploading(true);
 
-    // Use setTimeout to ensure state is updated before async operation
-    setTimeout(async () => {
-      try {
-        // Compress image AGGRESSIVELY for Android to avoid memory issues
-        let fileToUpload = file;
-        if (file.size > 512 * 1024) { // If larger than 512KB, compress
-          try {
-            fileToUpload = await compressImage(file);
-            console.log(`Compressed from ${(file.size / 1024).toFixed(0)}KB to ${(fileToUpload.size / 1024).toFixed(0)}KB`);
-          } catch (compressionError) {
-            console.warn('Compression failed, using original:', compressionError);
-            fileToUpload = file; // Fallback to original
-          }
-        }
-
-        // Upload directly to Supabase WITHOUT creating object URL preview
-        // This avoids memory issues on Android
-        const url = await uploadMedia(fileToUpload, userId, checklistId, fieldName);
-
-        if (!url) {
-          throw new Error('Upload failed - no URL returned');
-        }
-
-        // Update parent component with the permanent URL
-        onChange(url);
-
-        // Set preview to uploaded URL with cache busting
-        setPreview(url + '?t=' + Date.now());
-
-        toast.success("Photo uploaded successfully");
-      } catch (error) {
-        console.error("Upload error:", error);
-        toast.error("Failed to upload photo. Please try again.");
-        setPreview(value);
-      } finally {
-        setUploading(false);
-
-        // Reset file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+    try {
+      // Compress image AGGRESSIVELY for Android to avoid memory issues
+      let fileToUpload = file;
+      if (file.size > 512 * 1024) { // If larger than 512KB, compress
+        try {
+          fileToUpload = await compressImage(file);
+          console.log(`Compressed from ${(file.size / 1024).toFixed(0)}KB to ${(fileToUpload.size / 1024).toFixed(0)}KB`);
+        } catch (compressionError) {
+          console.warn('Compression failed, using original:', compressionError);
+          fileToUpload = file;
         }
       }
-    }, 0);
+
+      // Upload directly to Supabase WITHOUT creating object URL preview
+      const url = await uploadMedia(fileToUpload, userId, checklistId, fieldName);
+
+      if (!url) {
+        throw new Error('Upload failed - no URL returned');
+      }
+
+      // Update parent component with the permanent URL
+      onChange(url);
+
+      // Set preview to uploaded URL
+      setPreview(url);
+
+      toast.success("Photo uploaded successfully");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload photo. Please try again.");
+      setPreview(value);
+    } finally {
+      setUploading(false);
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleRemove = () => {
@@ -223,20 +214,7 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
             type="button"
             variant="outline"
             disabled={uploading}
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation();
-              if (!uploading && fileInputRef.current) {
-                fileInputRef.current.click();
-              }
-              return false;
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
+            onClick={() => fileInputRef.current?.click()}
           >
             {uploading ? (
               <>

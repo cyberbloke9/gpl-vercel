@@ -112,20 +112,12 @@ export default function Issues() {
         const from = (currentPage - 1) * ITEMS_PER_PAGE;
         const to = from + ITEMS_PER_PAGE - 1;
 
+        // Fetch flagged issues without join (same pattern as generator logs)
         let query = supabase
           .from('flagged_issues')
-          .select(`
-            *,
-            profiles:user_id (
-              full_name,
-              employee_id
-            ),
-            checklists:checklist_id (date),
-            transformer_logs:transformer_log_id (date, hour, transformer_number)
-          `, { count: 'exact' })
+          .select('*', { count: 'exact' })
           .gte('reported_at', daysAgo.toISOString())
-          .order('reported_at', { ascending: false })
-          .range(from, to);
+          .order('reported_at', { ascending: false });
 
         if (statusFilter !== 'all') {
           query = query.eq('status', statusFilter);
@@ -140,10 +132,55 @@ export default function Issues() {
           query = query.neq('status', 'resolved');
         }
 
-        const { data, error, count } = await query;
+        const { data: issuesData, error, count } = await query;
 
         if (error) throw error;
-        setIssues(data || []);
+
+        // Get user profiles separately
+        const userIds = [...new Set(issuesData?.map(issue => issue.user_id) || [])];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, employee_id')
+          .in('id', userIds);
+
+        const profilesMap = profiles?.reduce((acc: any, profile: any) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {}) || {};
+
+        // Get checklist data separately
+        const checklistIds = [...new Set(issuesData?.filter(i => i.checklist_id).map(i => i.checklist_id) || [])];
+        const { data: checklists } = checklistIds.length > 0 ? await supabase
+          .from('checklists')
+          .select('id, date')
+          .in('id', checklistIds) : { data: [] };
+
+        const checklistsMap = checklists?.reduce((acc: any, c: any) => {
+          acc[c.id] = c;
+          return acc;
+        }, {}) || {};
+
+        // Get transformer log data separately
+        const transformerLogIds = [...new Set(issuesData?.filter(i => i.transformer_log_id).map(i => i.transformer_log_id) || [])];
+        const { data: transformerLogs } = transformerLogIds.length > 0 ? await supabase
+          .from('transformer_logs')
+          .select('id, date, hour, transformer_number')
+          .in('id', transformerLogIds) : { data: [] };
+
+        const transformerLogsMap = transformerLogs?.reduce((acc: any, t: any) => {
+          acc[t.id] = t;
+          return acc;
+        }, {}) || {};
+
+        // Map profiles and related data to issues
+        const issuesWithProfiles = issuesData?.slice(from, to + 1).map((issue: any) => ({
+          ...issue,
+          profiles: profilesMap[issue.user_id],
+          checklists: issue.checklist_id ? checklistsMap[issue.checklist_id] : undefined,
+          transformer_logs: issue.transformer_log_id ? transformerLogsMap[issue.transformer_log_id] : undefined,
+        })) || [];
+
+        setIssues(issuesWithProfiles);
         setTotalCount(count || 0);
       } catch (error) {
         console.error('Error fetching issues:', error);

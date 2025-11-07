@@ -83,7 +83,7 @@ export default function Admin() {
 
   useEffect(() => {
     loadDashboardData();
-    
+
     // Subscribe to realtime updates
     const channel = supabase
       .channel('admin-dashboard')
@@ -94,7 +94,8 @@ export default function Admin() {
           schema: 'public',
           table: 'checklists',
         },
-        () => {
+        (payload) => {
+          console.log('Checklist change detected:', payload);
           loadDashboardData();
         }
       )
@@ -105,7 +106,8 @@ export default function Admin() {
           schema: 'public',
           table: 'transformer_logs',
         },
-        () => {
+        (payload) => {
+          console.log('Transformer log change detected:', payload);
           loadDashboardData();
         }
       )
@@ -116,11 +118,14 @@ export default function Admin() {
           schema: 'public',
           table: 'generator_logs',
         },
-        () => {
+        (payload) => {
+          console.log('Generator log change detected:', payload);
           loadDashboardData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Admin dashboard subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -421,7 +426,17 @@ export default function Admin() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Admin Dashboard</h1>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadDashboardData()}
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
