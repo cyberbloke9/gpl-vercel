@@ -109,16 +109,26 @@ export const NumericInput = ({
             if (e.key === '-' && e.currentTarget.selectionStart !== 0) {
               e.preventDefault();
             }
-            // Handle Enter key to move to next field
+            // Enter key handling - move to next visible, enabled input
             if (e.key === 'Enter') {
               e.preventDefault();
-              const form = e.currentTarget.form;
-              if (form) {
-                const inputs = Array.from(form.querySelectorAll('input, select, textarea, button'));
-                const index = inputs.indexOf(e.currentTarget);
-                const nextInput = inputs[index + 1] as HTMLElement;
-                if (nextInput && nextInput.tagName !== 'BUTTON') {
-                  nextInput.focus();
+              const focusableElements = Array.from(
+                document.querySelectorAll<HTMLElement>(
+                  'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+                )
+              ).filter(el => {
+                // Only include visible elements
+                const rect = el.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+              });
+
+              const currentIndex = focusableElements.indexOf(e.currentTarget as HTMLElement);
+              if (currentIndex >= 0 && currentIndex < focusableElements.length - 1) {
+                const nextElement = focusableElements[currentIndex + 1];
+                nextElement?.focus();
+                // For number/text inputs, select all text
+                if (nextElement && ('select' in nextElement)) {
+                  (nextElement as HTMLInputElement).select?.();
                 }
               }
             }
