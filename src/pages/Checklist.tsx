@@ -188,16 +188,16 @@ export default function Checklist() {
     setIsSaving(false);
   };
 
-  // Auto-save with debounce
+  // Auto-save with debounce - REDUCED from 30s to 3s for Android Chrome photo capture
   const scheduleAutoSave = useCallback((moduleNum: number, data: any) => {
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
     }
-    
+
     const timeout = setTimeout(() => {
       saveModuleData(moduleNum, data);
-    }, 30000); // 30 seconds
-    
+    }, 3000); // 3 seconds - faster to prevent data loss on Android camera navigation
+
     setAutoSaveTimeout(timeout);
   }, [autoSaveTimeout, currentChecklistId, problemFields]);
 

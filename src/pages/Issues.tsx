@@ -112,6 +112,15 @@ export default function Issues() {
         const from = (currentPage - 1) * ITEMS_PER_PAGE;
         const to = from + ITEMS_PER_PAGE - 1;
 
+        console.log('Fetching flagged issues:', {
+          user: user?.id,
+          userRole,
+          dateRange,
+          daysAgo: daysAgo.toISOString(),
+          statusFilter,
+          severityFilter
+        });
+
         // Fetch flagged issues without join (same pattern as generator logs)
         let query = supabase
           .from('flagged_issues')
@@ -134,14 +143,31 @@ export default function Issues() {
 
         const { data: issuesData, error, count } = await query;
 
-        if (error) throw error;
+        console.log('Flagged issues query result:', {
+          count,
+          issuesDataLength: issuesData?.length,
+          error: error?.message
+        });
+
+        if (error) {
+          console.error('Error fetching flagged issues:', error);
+          throw error;
+        }
 
         // Get user profiles separately
         const userIds = [...new Set(issuesData?.map(issue => issue.user_id) || [])];
-        const { data: profiles } = await supabase
+        console.log('Fetching profiles for user IDs:', userIds);
+
+        const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, full_name, employee_id')
           .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        }
+
+        console.log('Profiles fetched:', profiles?.length);
 
         const profilesMap = profiles?.reduce((acc: any, profile: any) => {
           acc[profile.id] = profile;
@@ -180,10 +206,17 @@ export default function Issues() {
           transformer_logs: issue.transformer_log_id ? transformerLogsMap[issue.transformer_log_id] : undefined,
         })) || [];
 
+        console.log('Final issues with profiles:', issuesWithProfiles.length);
+
         setIssues(issuesWithProfiles);
         setTotalCount(count || 0);
       } catch (error) {
         console.error('Error fetching issues:', error);
+        toast({
+          title: 'Error Loading Issues',
+          description: error instanceof Error ? error.message : 'Failed to load flagged issues. Please check console for details.',
+          variant: 'destructive'
+        });
       } finally {
         setLoading(false);
       }

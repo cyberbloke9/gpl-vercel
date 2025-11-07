@@ -206,6 +206,10 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
             accept="image/*"
             capture="environment"
             onChange={handleFileChange}
+            onClick={(e) => {
+              // Reset value to ensure onChange fires even for same file
+              e.currentTarget.value = '';
+            }}
             className="hidden"
             id={`photo-${fieldName}`}
             disabled={uploading}
