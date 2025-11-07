@@ -123,19 +123,19 @@ export const NumericInput = ({
         <div className="mt-2">
           <IssueFlagger
             checklistId={checklistId || undefined}
-            transformerLogId={transformerLogId || 'pending'}
+            transformerLogId={transformerLogId || undefined}
             module={module}
             section={section}
             item={item}
             unit={unit}
             disabled={!canFlagIssues}
             defaultSeverity={
-              validation.status === 'danger' ? 'critical' : 
-              validation.status === 'warning' ? 'high' : 
+              validation.status === 'danger' ? 'critical' :
+              validation.status === 'warning' ? 'high' :
               'medium'
             }
             autoDescription={
-              validation.status === 'danger' 
+              validation.status === 'danger'
                 ? `Value ${numValue}${unit || ''} is outside acceptable range (${range?.min}-${range?.max}${unit || ''})`
                 : validation.status === 'warning'
                 ? `Value ${numValue}${unit || ''} is outside ideal range`

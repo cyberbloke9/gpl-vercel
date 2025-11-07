@@ -163,7 +163,7 @@ export const PhotoUpload = ({ label, value, onChange, required, userId, checklis
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            /* ANDROID FIX: Remove capture attribute for better compatibility */
+            capture="environment"
             onChange={handleFileChange}
             className="hidden"
             id={`photo-${fieldName}`}
