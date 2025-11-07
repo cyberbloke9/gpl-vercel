@@ -1,0 +1,526 @@
+# GPL-2.2MW Project Context & Session History
+
+**Project:** Gayatri Power Limited - 2.2MW Hydro Power Plant Management System
+**Tech Stack:** React + TypeScript + Supabase + Vercel
+**Last Updated:** 2025-01-07
+
+---
+
+## Current Critical Issues (UNRESOLVED)
+
+### 1. 🔴 Android Chrome Photo Upload - Page Refresh Issue
+**Status:** STILL BROKEN
+**Platforms Affected:** Android Chrome ONLY (iOS Safari works perfectly)
+
+**Behavior:**
+- User enters data in checklist form
+- User clicks "Capture Photo" button
+- Camera opens
+- User takes photo
+- **Page REFRESHES/RELOADS completely**
+- All entered data is lost
+- Photo shows "uploaded successfully" toast BUT disappears from UI
+- Photo IS in Supabase storage, but not visible in form
+
+**Root Cause Analysis:**
+- Android Chrome does full page navigation when opening camera
+- Page reloads when returning from camera
+- Even with immediate save callbacks, timing issue persists
+
+**Attempted Fixes (ALL FAILED):**
+1. ✗ Added `e.preventDefault()` and `e.stopPropagation()` on button clicks
+2. ✗ Wrapped upload in `setTimeout()` to prevent race conditions
+3. ✗ Added `onTouchEnd` handlers to prevent touch events
+4. ✗ Reduced auto-save interval from 30s → 3s
+5. ✗ Added `onUploadComplete` callback with immediate DB save
+6. ✗ Blocked page interaction during upload (`pointerEvents = 'none'`)
+7. ✗ Added cache busting to preview URLs
+8. ✗ Removed ALL object URL creation
+
+**Files Modified:**
+- `src/components/checklist/PhotoUpload.tsx` - Core photo component
+- `src/components/checklist/Module1.tsx` - 4 PhotoUpload instances
+- `src/components/checklist/Module2.tsx` - 1 PhotoUpload instance
+- `src/components/checklist/Module3.tsx` - 3 PhotoUpload instances
+- `src/components/checklist/module4/ODYardSection.tsx` - 3 PhotoUpload instances
+- `src/pages/Checklist.tsx` - Auto-save logic
+
+**What We Know:**
+- iOS Safari: Works perfectly ✅
+- Android Chrome: Completely broken ✗
+- Issue is browser-specific, not device-specific
+- Photo upload succeeds, but page navigation loses context
+
+**Next Steps to Try:**
+- Investigate using service workers to intercept page reload
+- Consider using React Router to prevent full page navigation
+- Try using window.beforeunload event to prevent reload
+- Consider sessionStorage to persist form state across reloads
+- May need to use PWA approach with app-like navigation
+
+---
+
+### 2. 🔴 Flagged Issues Not Showing in UI
+**Status:** BROKEN (but data exists in database)
+
+**Behavior:**
+- Users can flag issues successfully
+- Issues are saved to `flagged_issues` table in Supabase
+- Issues page shows "No issues reported yet"
+- Database query confirms issues exist
+- Both users AND admins cannot see issues
+
+**Root Cause:**
+- Likely RLS (Row Level Security) policy blocking SELECT queries
+- OR frontend query pattern issue
+
+**Fixes Applied:**
+- Changed from PostgREST join syntax to separate fetch pattern (like generator logs)
+- Added comprehensive console logging for debugging
+- Added error toast to show RLS errors
+- Created `test_flagged_issues_rls.sql` for manual testing
+
+**Debug Info Added:**
+```typescript
+// Issues.tsx now logs:
+- User ID and role
+- Date range filter
+- Query result count
+- Profile fetching process
+- Final issues count
+- Any errors
+```
+
+**RLS Policies Applied:**
+```sql
+-- Users can view their own issues
+CREATE POLICY "Users can view their own flagged issues"
+ON public.flagged_issues FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Users can insert their own issues
+CREATE POLICY "Users can insert their own flagged issues"
+ON public.flagged_issues FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Admins can view all issues
+CREATE POLICY "Admins can view all flagged issues"
+ON public.flagged_issues FOR SELECT
+USING (EXISTS (
+  SELECT 1 FROM public.user_roles
+  WHERE user_roles.user_id = auth.uid()
+  AND user_roles.role = 'admin'
+));
+
+-- Admins can update all issues
+CREATE POLICY "Admins can update all flagged issues"
+ON public.flagged_issues FOR UPDATE
+USING (EXISTS (
+  SELECT 1 FROM public.user_roles
+  WHERE user_roles.user_id = auth.uid()
+  AND user_roles.role = 'admin'
+));
+```
+
+**Next Steps:**
+- User needs to open browser console on Issues page
+- Check console logs for query results
+- Run `test_flagged_issues_rls.sql` in Supabase SQL Editor
+- Verify RLS policies are correct
+- Check if foreign keys are working
+
+---
+
+## Recent Fixes (WORKING ✅)
+
+### 1. ✅ Admin Dashboard - Checklists & Transformer Logs Display
+**Fixed:** 2025-01-07
+**Issue:** Checklists and transformer logs weren't showing in admin dashboard
+**Cause:** Using PostgREST join syntax that wasn't working
+
+**Solution:** Copied working generator logs pattern:
+```typescript
+// BEFORE (broken):
+const { data } = await supabase
+  .from('checklists')
+  .select(`*, profiles:user_id (full_name, employee_id)`)
+
+// AFTER (working):
+const { data } = await supabase.from('checklists').select('*')
+const userIds = [...new Set(data?.map(c => c.user_id) || [])]
+const { data: profiles } = await supabase
+  .from('profiles')
+  .select('id, full_name, employee_id')
+  .in('id', userIds)
+// Manual mapping...
+```
+
+**Files Modified:**
+- `src/pages/Admin.tsx` - Admin dashboard queries
+
+**Result:** Admin can now see today's checklists and transformer logs ✅
+
+---
+
+### 2. ✅ Keyboard Next Button Navigation
+**Fixed:** 2025-01-07
+**Issue:** "Next" button on mobile keyboard didn't navigate to next field
+
+**Solution:**
+- Filter for only VISIBLE elements using `getBoundingClientRect()`
+- Exclude hidden inputs
+- Check `offsetParent !== null`
+- Auto-select text in next field after focusing
+
+**Code:**
+```typescript
+const focusableElements = Array.from(
+  document.querySelectorAll<HTMLElement>(
+    'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+  )
+).filter(el => {
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+});
+```
+
+**Files Modified:**
+- `src/components/checklist/NumericInput.tsx`
+
+**Result:** Next button now works on mobile keyboards ✅
+
+---
+
+### 3. ✅ Admin Dashboard Refresh Button
+**Fixed:** 2025-01-07
+**Issue:** Dashboard required full page refresh to see new data
+
+**Solution:**
+- Added manual "Refresh" button in dashboard header
+- Added console logs to debug realtime subscription
+- Users can now manually refresh if needed
+
+**Files Modified:**
+- `src/pages/Admin.tsx`
+
+**Result:** Manual refresh button added, realtime subscription logging enabled ✅
+
+---
+
+## Database Schema Changes
+
+### Migration 30: flagged_issues Table
+**Created:** 2025-01-07
+
+```sql
+CREATE TABLE IF NOT EXISTS public.flagged_issues (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  checklist_id UUID REFERENCES public.checklists(id) ON DELETE CASCADE,
+  transformer_log_id UUID REFERENCES public.transformer_logs(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  module TEXT NOT NULL,
+  section TEXT NOT NULL,
+  item TEXT NOT NULL,
+  unit TEXT,
+  severity TEXT NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+  description TEXT NOT NULL CHECK (length(description) >= 10 AND length(description) <= 1000),
+  issue_code TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'reported' CHECK (status IN ('reported', 'in_progress', 'resolved', 'closed')),
+  reported_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Foreign keys added later
+ALTER TABLE public.flagged_issues
+ADD CONSTRAINT flagged_issues_user_id_profiles_fkey
+FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+```
+
+**Purpose:** Store issues flagged by users during checklists/transformer/generator logs
+
+---
+
+## Key Code Patterns
+
+### 1. Separate Fetch Pattern (Working ✅)
+**Use this pattern instead of PostgREST joins:**
+
+```typescript
+// 1. Fetch main data without join
+const { data } = await supabase.from('table').select('*').eq('date', today);
+
+// 2. Get unique user IDs
+const userIds = [...new Set(data?.map(item => item.user_id) || [])];
+
+// 3. Fetch profiles separately
+const { data: profiles } = await supabase
+  .from('profiles')
+  .select('id, full_name, employee_id')
+  .in('id', userIds);
+
+// 4. Create profiles map
+const profilesMap = profiles?.reduce((acc: any, profile: any) => {
+  acc[profile.id] = profile;
+  return acc;
+}, {}) || {};
+
+// 5. Map profiles to data
+const dataWithProfiles = data?.map(item => ({
+  ...item,
+  profile: profilesMap[item.user_id]
+}));
+```
+
+**Used In:**
+- Admin dashboard (generator logs, checklists, transformer logs)
+- Issues page (flagged issues)
+
+---
+
+### 2. Photo Upload with Immediate Save (Still Broken ✗)
+
+**Pattern:**
+```typescript
+// PhotoUpload.tsx
+interface PhotoUploadProps {
+  onUploadComplete?: (url: string) => Promise<void>;
+  // ... other props
+}
+
+const handleFileChange = async (e) => {
+  // Upload to Supabase
+  const url = await uploadMedia(file, userId, checklistId, fieldName);
+
+  // Update parent state
+  onChange(url);
+
+  // Trigger immediate DB save
+  if (onUploadComplete) {
+    await onUploadComplete(url);
+  }
+};
+
+// Module component
+const handlePhotoUploadComplete = async (field, url) => {
+  const updated = { ...formData, [field]: url };
+  onSave(updated); // Immediate save to DB
+};
+```
+
+**Issue:** Even with immediate save, Android Chrome reload loses data
+
+---
+
+## File Structure
+
+### Core Checklist Components
+```
+src/components/checklist/
+├── Module1.tsx           # Turbine, Gearbox, Cooling System
+├── Module2.tsx           # Generator (2 units)
+├── Module3.tsx           # De-watering Sump
+├── Module4.tsx           # OD Yard + Control Room (tabs)
+├── module4/
+│   ├── ODYardSection.tsx      # PTR, Diesel Gen, Landscape
+│   └── ControlRoomSection.tsx # Control room equipment
+├── PhotoUpload.tsx       # Photo capture component (BROKEN on Android)
+├── NumericInput.tsx      # Numeric input with range validation
+└── IssueFlagger.tsx      # Flag issues dialog
+
+src/pages/
+├── Checklist.tsx         # Main checklist page with auto-save
+├── Issues.tsx            # Flagged issues display (BROKEN)
+└── Admin.tsx             # Admin dashboard (FIXED)
+```
+
+---
+
+## Environment & Deployment
+
+### Repositories
+- **gpl-vercel** (Production): https://github.com/cyberbloke9/gpl-vercel.git
+- **gayatripower** (Backup): https://github.com/cyberbloke9/gayatripower.git
+
+### Deployment
+- **Platform:** Vercel (auto-deploy from gpl-vercel/main)
+- **Database:** Supabase (PostgreSQL)
+- **Storage:** Supabase Storage
+
+### Local Development
+```bash
+# gpl-vercel is the production repo
+cd "C:\Users\Prithvi Putta\gpl-vercel"
+git push origin main  # Triggers Vercel deployment
+
+# gayatripower is synchronized backup
+cd "C:\Users\Prithvi Putta\gayatripower"
+git push origin main  # Backup only
+```
+
+---
+
+## Commit History (Today's Session)
+
+### Latest Commits (gpl-vercel)
+1. `a501650` - Fix Android Chrome page reload - immediate save after photo upload (FAILED)
+2. `96d1579` - Fix Android Chrome page refresh and debug flagged issues
+3. `739e190` - Fix Android photo upload, keyboard navigation, and flagged issues RLS
+4. `4590a7b` - Fix admin checklists and transformer logs - copy generator logs pattern (WORKED ✅)
+5. `69cfd13` - Trigger Vercel deployment (empty commit)
+
+---
+
+## Known Working Patterns
+
+### 1. Admin Dashboard Data Loading ✅
+- Separate fetch for data
+- Separate fetch for profiles
+- Manual mapping
+- Works for generator logs, checklists, transformer logs
+
+### 2. Keyboard Navigation ✅
+- Filter visible elements with getBoundingClientRect()
+- Use enterKeyHint="next" attribute
+- Focus next element on Enter key
+
+### 3. Auto-save (3 second debounce) ✅
+- Reduced from 30s to 3s for faster saves
+- Helps but doesn't solve Android Chrome reload issue
+
+---
+
+## Known Broken Patterns
+
+### 1. PostgREST Join Syntax ✗
+```typescript
+// DON'T USE THIS:
+.select(`*, profiles:user_id (full_name, employee_id)`)
+
+// USE SEPARATE FETCH PATTERN INSTEAD
+```
+
+### 2. Android Chrome Photo Upload ✗
+- Any pattern involving camera capture fails
+- Page reloads regardless of preventDefault/stopPropagation
+- Immediate save doesn't help
+- Object URL creation/prevention doesn't help
+
+---
+
+## Testing Checklist
+
+### Before Each Deployment
+- [ ] Test photo upload on iOS Safari (should work)
+- [ ] Test photo upload on Android Chrome (currently broken)
+- [ ] Test keyboard Next button on mobile
+- [ ] Test flagged issues display (users and admins)
+- [ ] Test admin dashboard refresh
+- [ ] Check browser console for errors
+
+### After Deployment
+- [ ] Verify Vercel deployment succeeded
+- [ ] Test on actual Android device (not just emulator)
+- [ ] Check Supabase storage for uploaded photos
+- [ ] Verify data persistence across page reloads
+
+---
+
+## Browser Compatibility
+
+### Working ✅
+- **iOS Safari** - All features work perfectly
+- **Desktop Chrome** - All features work
+- **Desktop Firefox** - All features work
+- **Desktop Safari** - All features work
+
+### Broken ✗
+- **Android Chrome** - Photo upload causes page refresh and data loss
+
+---
+
+## SQL Debug Scripts
+
+### test_flagged_issues_rls.sql
+**Purpose:** Verify flagged issues table, RLS policies, and foreign keys
+
+```sql
+-- Check if RLS is enabled
+SELECT tablename, rowsecurity FROM pg_tables WHERE tablename = 'flagged_issues';
+
+-- Check all policies
+SELECT * FROM pg_policies WHERE tablename = 'flagged_issues';
+
+-- Check actual data
+SELECT id, issue_code, user_id, module, severity, status, reported_at
+FROM public.flagged_issues ORDER BY reported_at DESC LIMIT 10;
+
+-- Check foreign keys
+SELECT tc.constraint_name, tc.table_name, kcu.column_name,
+       ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='flagged_issues';
+```
+
+---
+
+## Next Session TODO
+
+### Critical Priority 🔴
+1. **Fix Android Chrome photo upload** (HIGHEST PRIORITY)
+   - Research Android Chrome navigation behavior
+   - Try service worker approach
+   - Consider PWA with app-like navigation
+   - Investigate sessionStorage for form persistence
+   - May need React Router to prevent full page reload
+
+2. **Fix flagged issues display**
+   - User to run test_flagged_issues_rls.sql
+   - Check browser console logs on Issues page
+   - Verify RLS policies are correct
+   - Test with actual user account
+
+### Medium Priority 🟡
+3. Auto-save improvements if needed
+4. Better error handling for photo uploads
+5. Loading states and user feedback
+
+### Low Priority 🟢
+6. Performance optimizations
+7. Code cleanup
+8. Documentation updates
+
+---
+
+## Important Notes
+
+### Android Chrome Issue
+- This is a **browser-specific** issue, NOT a device issue
+- iOS Safari works perfectly with identical code
+- The issue is Android Chrome's navigation behavior when camera is accessed
+- May require fundamentally different approach (PWA, React Router, etc.)
+
+### RLS Policies
+- Always test RLS policies with actual user accounts
+- Admin and user roles have different policies
+- Use Supabase SQL Editor to test policies manually
+
+### Data Persistence
+- Auto-save helps but doesn't solve Android Chrome reload
+- Need better strategy for form state persistence
+- Consider using sessionStorage or localStorage as backup
+
+---
+
+## Contact & Resources
+
+- **Project Owner:** Prithvi Putta
+- **Supabase Project:** qgngvqejfxhzbdnqvqxp
+- **Vercel Project:** gpl-vercel
+- **Repository:** https://github.com/cyberbloke9/gpl-vercel
+
+---
+
+*This document should be updated after each major fix or discovery.*
