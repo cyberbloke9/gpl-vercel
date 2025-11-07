@@ -138,46 +138,61 @@ export default function Admin() {
         .select('*', { count: 'exact', head: true })
         .eq('role', 'operator');
 
-    // Get today's checklists with user details
+    // Get today's checklists (without join, same pattern as generator logs)
     const { data: checklists } = await supabase
       .from('checklists')
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          employee_id
-        )
-      `)
+      .select('*')
       .eq('date', today)
       .order('start_time', { ascending: false });
 
+    // Get user profiles for checklists
+    const checklistUserIds = [...new Set(checklists?.map(c => c.user_id) || [])];
+    const { data: checklistProfiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, employee_id')
+      .in('id', checklistUserIds);
+
+    const checklistProfilesMap = checklistProfiles?.reduce((acc: any, profile: any) => {
+      acc[profile.id] = profile;
+      return acc;
+    }, {}) || {};
+
     // Format checklists for table
-    const formattedChecklists = checklists?.map((c: any) => ({
-      id: c.id,
-      user_name: c.profiles?.full_name || 'Unknown',
-      employee_id: c.profiles?.employee_id || '',
-      start_time: c.start_time,
-      status: c.status,
-      completion_percentage: c.completion_percentage || 0,
-      problem_count: c.problem_count || 0,
-      flagged_issues_count: c.flagged_issues_count || 0,
-      submitted: c.submitted || false,
-    })) || [];
+    const formattedChecklists = checklists?.map((c: any) => {
+      const profile = checklistProfilesMap[c.user_id];
+      return {
+        id: c.id,
+        user_name: profile?.full_name || 'Unknown',
+        employee_id: profile?.employee_id || '',
+        start_time: c.start_time,
+        status: c.status,
+        completion_percentage: c.completion_percentage || 0,
+        problem_count: c.problem_count || 0,
+        flagged_issues_count: c.flagged_issues_count || 0,
+        submitted: c.submitted || false,
+      };
+    }) || [];
 
     setTodaysChecklists(formattedChecklists);
 
-    // Get today's transformer logs
+    // Get today's transformer logs (without join, same pattern as generator logs)
     const { data: transformerData } = await supabase
       .from('transformer_logs')
-      .select(`
-        *,
-        profiles:logged_by (
-          full_name,
-          employee_id
-        )
-      `)
+      .select('*')
       .eq('date', today)
       .order('logged_at', { ascending: false });
+
+    // Get user profiles for transformer logs
+    const transformerUserIds = [...new Set(transformerData?.map(log => log.logged_by) || [])];
+    const { data: transformerProfiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, employee_id')
+      .in('id', transformerUserIds);
+
+    const transformerProfilesMap = transformerProfiles?.reduce((acc: any, profile: any) => {
+      acc[profile.id] = profile;
+      return acc;
+    }, {}) || {};
 
     // Group transformer logs by date and transformer_number (collective progress across all users)
     const groupedTransformerLogs = transformerData?.reduce((acc: any, log: any) => {
@@ -192,9 +207,10 @@ export default function Admin() {
           logs: []
         };
       }
-      acc[key].users.add(log.profiles?.full_name || 'Unknown');
-      if (log.profiles?.employee_id) {
-        acc[key].employee_ids.add(log.profiles.employee_id);
+      const profile = transformerProfilesMap[log.logged_by];
+      acc[key].users.add(profile?.full_name || 'Unknown');
+      if (profile?.employee_id) {
+        acc[key].employee_ids.add(profile.employee_id);
       }
       acc[key].unique_hours.add(log.hour);
       acc[key].logs.push(log);
@@ -301,49 +317,61 @@ export default function Admin() {
   };
 
   const handleViewReport = async (checklistId: string) => {
+    // Fetch checklist without join
     const { data, error } = await supabase
       .from('checklists')
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          employee_id
-        )
-      `)
+      .select('*')
       .eq('id', checklistId)
       .single();
 
     if (!error && data) {
+      // Fetch user profile separately
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, employee_id')
+        .eq('id', data.user_id)
+        .single();
+
       setSelectedChecklist({
         ...data,
-        userName: data.profiles?.full_name,
-        employeeId: data.profiles?.employee_id
+        userName: profile?.full_name,
+        employeeId: profile?.employee_id
       });
       setIsChecklistViewerOpen(true);
     }
   };
 
   const handleViewTransformerReport = async (date: string, transformerNumber: number) => {
+    // Fetch transformer logs without join
     const { data, error } = await supabase
       .from('transformer_logs')
-      .select(`
-        *,
-        profiles:logged_by (
-          full_name,
-          employee_id
-        )
-      `)
+      .select('*')
       .eq('date', date)
       .eq('transformer_number', transformerNumber)
       .order('hour', { ascending: true });
 
     if (!error && data && data.length > 0) {
+      // Get user profiles for these logs
+      const userIds = [...new Set(data.map(log => log.logged_by))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, employee_id')
+        .in('id', userIds);
+
+      const profilesMap = profiles?.reduce((acc: any, profile: any) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {}) || {};
+
+      // Get first user's profile for display
+      const firstProfile = profilesMap[data[0].logged_by];
+
       setSelectedTransformerReport({
         date,
         transformerNumber,
         logs: data,
-        userName: data[0].profiles?.full_name,
-        employeeId: data[0].profiles?.employee_id
+        userName: firstProfile?.full_name,
+        employeeId: firstProfile?.employee_id
       });
       setIsTransformerViewerOpen(true);
     }
