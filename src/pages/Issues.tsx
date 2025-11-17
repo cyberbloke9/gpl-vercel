@@ -121,6 +121,18 @@ export default function Issues() {
           severityFilter
         });
 
+        // First, let's test if we can see ANY issues at all (bypass date filter for debugging)
+        const { data: testData, count: testCount, error: testError } = await supabase
+          .from('flagged_issues')
+          .select('*', { count: 'exact' });
+
+        console.log('TEST - All flagged issues (no filters):', {
+          totalCount: testCount,
+          dataLength: testData?.length,
+          error: testError?.message,
+          sampleData: testData?.[0]
+        });
+
         // Fetch flagged issues without join (same pattern as generator logs)
         let query = supabase
           .from('flagged_issues')
