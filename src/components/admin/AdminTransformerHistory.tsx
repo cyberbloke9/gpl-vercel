@@ -45,15 +45,10 @@ export const AdminTransformerHistory = ({ onViewReport }: AdminTransformerHistor
       const daysAgo = new Date();
       daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
 
+      // Fetch transformer logs without join (same pattern as generator logs)
       let query = supabase
         .from('transformer_logs')
-        .select(`
-          *,
-          profiles:logged_by (
-            full_name,
-            employee_id
-          )
-        `)
+        .select('*')
         .gte('date', daysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false })
         .order('logged_at', { ascending: false });
@@ -67,6 +62,18 @@ export const AdminTransformerHistory = ({ onViewReport }: AdminTransformerHistor
       const { data: logsData, error } = await query;
 
       if (error) throw error;
+
+      // Get user profiles separately
+      const userIds = [...new Set(logsData?.map(log => log.logged_by) || [])];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, employee_id')
+        .in('id', userIds);
+
+      const profilesMap = profiles?.reduce((acc: any, profile: any) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {}) || {};
 
       // Group by date + transformer_number (collective progress across all users)
       const grouped = logsData?.reduce((acc: any, log: any) => {
@@ -83,9 +90,10 @@ export const AdminTransformerHistory = ({ onViewReport }: AdminTransformerHistor
             logs: []
           };
         }
-        acc[key].users.add(log.profiles?.full_name || 'Unknown');
-        if (log.profiles?.employee_id) {
-          acc[key].employee_ids.add(log.profiles.employee_id);
+        const profile = profilesMap[log.logged_by];
+        acc[key].users.add(profile?.full_name || 'Unknown');
+        if (profile?.employee_id) {
+          acc[key].employee_ids.add(profile.employee_id);
         }
         acc[key].unique_hours.add(log.hour);
         acc[key].logs.push(log);

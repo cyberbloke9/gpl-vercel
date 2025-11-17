@@ -48,15 +48,10 @@ export const AdminChecklistHistory = ({ onViewReport }: AdminChecklistHistoryPro
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
+      // Fetch checklists without join (same pattern as generator logs)
       let query = supabase
         .from('checklists')
-        .select(`
-          *,
-          profiles:user_id (
-            full_name,
-            employee_id
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .gte('date', daysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false })
         .order('submitted_at', { ascending: false })
@@ -68,10 +63,29 @@ export const AdminChecklistHistory = ({ onViewReport }: AdminChecklistHistoryPro
         query = query.eq('submitted', false);
       }
 
-      const { data, error, count } = await query;
+      const { data: checklistsData, error, count } = await query;
 
       if (error) throw error;
-      setChecklists(data || []);
+
+      // Get user profiles separately
+      const userIds = [...new Set(checklistsData?.map(c => c.user_id) || [])];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, employee_id')
+        .in('id', userIds);
+
+      const profilesMap = profiles?.reduce((acc: any, profile: any) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {}) || {};
+
+      // Map profiles to checklists
+      const checklistsWithProfiles = checklistsData?.map((checklist: any) => ({
+        ...checklist,
+        profiles: profilesMap[checklist.user_id]
+      })) || [];
+
+      setChecklists(checklistsWithProfiles);
       setTotalCount(count || 0);
     } catch (error) {
       console.error('Error loading checklists:', error);
