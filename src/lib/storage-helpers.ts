@@ -44,21 +44,22 @@ export const uploadMedia = async (
   checklistId: string,
   fieldName: string
 ): Promise<string> => {
-  const compressed = await compressImage(file);
+  // NOTE: Do NOT compress here - PhotoUpload.tsx already compresses before calling this
+  // Double compression was causing excessive memory usage on Android
   const fileName = `${userId}/${checklistId}/${fieldName}_${Date.now()}.jpg`;
-  
+
   const { data, error } = await supabase.storage
     .from('checklist-media')
-    .upload(fileName, compressed, { upsert: true });
-  
+    .upload(fileName, file, { upsert: true });
+
   if (error) throw error;
-  
+
   // Use signed URL for secure, time-limited access (24 hours)
   const { data: urlData, error: signedUrlError } = await supabase.storage
     .from('checklist-media')
     .createSignedUrl(data.path, 86400); // 24 hours expiry
-  
+
   if (signedUrlError) throw signedUrlError;
-  
+
   return urlData.signedUrl;
 };

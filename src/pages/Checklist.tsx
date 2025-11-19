@@ -29,7 +29,13 @@ import {
 export default function Checklist() {
   const { user } = useAuth();
   const [currentChecklistId, setCurrentChecklistId] = useState<string | null>(null);
-  const [activeModule, setActiveModule] = useState('1');
+
+  // Restore active module from localStorage to survive Android camera reload
+  const [activeModule, setActiveModule] = useState(() => {
+    const saved = localStorage.getItem('checklist_activeModule');
+    return saved || '1';
+  });
+
   const [module1Data, setModule1Data] = useState({});
   const [module2Data, setModule2Data] = useState({});
   const [module3Data, setModule3Data] = useState({});
@@ -42,6 +48,18 @@ export default function Checklist() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [moduleSaved, setModuleSaved] = useState({ 1: false, 2: false, 3: false, 4: false });
+
+  // Persist active module to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('checklist_activeModule', activeModule);
+  }, [activeModule]);
+
+  // Clear localStorage when checklist is submitted
+  useEffect(() => {
+    if (isSubmitted) {
+      localStorage.removeItem('checklist_activeModule');
+    }
+  }, [isSubmitted]);
 
   useEffect(() => {
     loadOrCreateTodayChecklist();
