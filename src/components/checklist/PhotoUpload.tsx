@@ -60,8 +60,8 @@ export const PhotoUpload = ({
         URL.revokeObjectURL(objectUrl);
 
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1920;
-        const MAX_HEIGHT = 1920;
+        const MAX_WIDTH = 1280; // Reduced resolution for stability
+        const MAX_HEIGHT = 1280;
         let width = img.width;
         let height = img.height;
 
@@ -96,7 +96,7 @@ export const PhotoUpload = ({
             }
           },
           'image/jpeg',
-          0.8 // 80% quality
+          0.7 // 70% quality
         );
       };
 

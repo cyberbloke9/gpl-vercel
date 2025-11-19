@@ -95,7 +95,7 @@ export default function Checklist() {
     if (!user) return;
 
     const today = getTodayIST();
-    
+
     // Load shared checklist for today (no user_id filter - collective work)
     const { data, error } = await supabase
       .from('checklists')
@@ -116,7 +116,7 @@ export default function Checklist() {
       setModule4Data(data.module4_data || {});
       setIsSubmitted(data.submitted || false);
       setSubmittedAt(data.submitted_at);
-      
+
       // If already submitted, redirect to history
       if (data.submitted) {
         setActiveModule('history');
@@ -147,10 +147,10 @@ export default function Checklist() {
 
     setIsSaving(true);
     const updateField = `module${moduleNum}_data`;
-    
+
     // Calculate progress and update problem tracking
     const progress = calculateProgress();
-    
+
     try {
       // Fetch current contributors
       const { data: currentChecklist, error: fetchError } = await supabase
@@ -168,7 +168,7 @@ export default function Checklist() {
 
       const contributors: any = (currentChecklist as any)?.contributors || {};
       const moduleKey = `module${moduleNum}`;
-      
+
       // Add current user to contributors for this module
       if (!contributors[moduleKey]) {
         contributors[moduleKey] = [];
@@ -176,10 +176,10 @@ export default function Checklist() {
       if (!contributors[moduleKey].includes(user.id)) {
         contributors[moduleKey].push(user.id);
       }
-      
+
       const { error } = await supabase
         .from('checklists')
-        .update({ 
+        .update({
           [updateField]: data,
           contributors: contributors,
           problem_fields: problemFields,
@@ -283,7 +283,7 @@ export default function Checklist() {
         }
         throw error;
       }
-      
+
       await loadOrCreateTodayChecklist();
       setShowSubmitDialog(false);
       toast.success('Checklist submitted successfully!');

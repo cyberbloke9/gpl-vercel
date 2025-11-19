@@ -9,7 +9,7 @@ export const compressImage = async (file: File, maxSizeMB = 1): Promise<Blob> =>
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        
+
         const maxDimension = 1920;
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -20,12 +20,12 @@ export const compressImage = async (file: File, maxSizeMB = 1): Promise<Blob> =>
             height = maxDimension;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d')!;
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         canvas.toBlob(
           (blob) => resolve(blob!),
           'image/jpeg',
