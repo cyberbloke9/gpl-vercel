@@ -78,9 +78,7 @@ export const TransformerLogHistory = ({ userId }: { userId?: string }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   useEffect(() => {
-    if (userId) {
-      loadHistory();
-    }
+    loadHistory();
   }, [userId]);
 
   const loadHistory = async () => {
@@ -106,7 +104,7 @@ export const TransformerLogHistory = ({ userId }: { userId?: string }) => {
 
   const handleViewReport = async (date: string) => {
     const logs = groupedLogs[date];
-    
+
     // Fetch user profile data for PDF
     if (logs.length > 0 && userId) {
       const { data: profile } = await supabase
@@ -115,8 +113,8 @@ export const TransformerLogHistory = ({ userId }: { userId?: string }) => {
         .eq('id', userId)
         .single();
 
-      setSelectedReport({ 
-        date, 
+      setSelectedReport({
+        date,
         logs,
         userName: profile?.full_name,
         employeeId: profile?.employee_id
@@ -124,23 +122,23 @@ export const TransformerLogHistory = ({ userId }: { userId?: string }) => {
     } else {
       setSelectedReport({ date, logs });
     }
-    
+
     setIsViewerOpen(true);
   };
 
   const getProgressBadge = (logsCount: number, date: string) => {
     const percentage = Math.round((logsCount / 24) * 100);
-    
+
     // Check if date has passed
     const logDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     logDate.setHours(0, 0, 0, 0);
-    
+
     if (logDate < today && percentage < 100) {
       return <Badge className="bg-red-600 text-white font-bold"><AlertCircle className="h-3 w-3 mr-1" /> Missed</Badge>;
     }
-    
+
     if (percentage === 100) {
       return <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" /> Complete</Badge>;
     } else if (percentage >= 50) {

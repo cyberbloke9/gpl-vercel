@@ -17,7 +17,11 @@ interface GeneratorLogHistoryProps {
 
 export function GeneratorLogHistory({ userId }: GeneratorLogHistoryProps) {
   const { toast } = useToast();
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return format(d, 'yyyy-MM-dd');
+  });
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [logs, setLogs] = useState<GeneratorLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +153,7 @@ export function GeneratorLogHistory({ userId }: GeneratorLogHistoryProps) {
               const isExpanded = expandedDates.has(date);
               const completedHours = dateLogs.length;
               const completionPercentage = Math.round((completedHours / 24) * 100);
-              
+
               // Check if date has passed
               const logDate = new Date(date);
               const today = new Date();

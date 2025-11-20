@@ -17,18 +17,25 @@ export const ChecklistHistory = ({ userId }: { userId?: string }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   useEffect(() => {
-    if (userId) loadHistory();
+    loadHistory();
   }, [userId]);
 
   const loadHistory = async () => {
-    if (!userId) return;
-    
+    // Allow loading without userId (Admin Mode shows all, User Mode shows specific)
+
     // Only fetch metadata, not module data (for performance)
-    const { data, error } = await supabase
+    let query = supabase
       .from('checklists')
       .select('id, date, shift, submitted, status, completion_percentage, problem_count, problem_fields, flagged_issues_count, start_time, completion_time, submitted_at, user_id')
       .order('date', { ascending: false })
       .limit(30);
+
+    // If userId is provided, filter by it. Otherwise (Admin), show all.
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error loading history:', error);
@@ -70,17 +77,17 @@ export const ChecklistHistory = ({ userId }: { userId?: string }) => {
     if (checklist.submitted) {
       return <Badge className="bg-green-100 text-green-800">Submitted</Badge>;
     }
-    
+
     // Check if date has passed and checklist is incomplete
     const checklistDate = new Date(checklist.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     checklistDate.setHours(0, 0, 0, 0);
-    
+
     if (checklistDate < today && checklist.completion_percentage < 100) {
       return <Badge className="bg-red-600 text-white font-bold">Missed</Badge>;
     }
-    
+
     if (checklist.status === 'completed') {
       return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>;
     }
@@ -93,7 +100,7 @@ export const ChecklistHistory = ({ userId }: { userId?: string }) => {
   return (
     <div className="space-y-3 sm:space-y-4 p-2 sm:p-4">
       <h2 className="text-xl sm:text-2xl font-bold">Checklist History</h2>
-      
+
       {checklists.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">No checklist history yet</p>
