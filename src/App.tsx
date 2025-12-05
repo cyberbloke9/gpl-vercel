@@ -15,6 +15,7 @@ import Transformer from "./pages/Transformer";
 import Generator from "./pages/Generator";
 import Issues from "./pages/Issues";
 import Admin from "./pages/Admin";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -90,6 +91,7 @@ const App = () => {
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/oauth/consent" element={<OAuthConsent />} />
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/checklist" element={<ProtectedRoute requireOperator><Checklist /></ProtectedRoute>} />
               <Route path="/transformer" element={<ProtectedRoute requireOperator><Transformer /></ProtectedRoute>} />

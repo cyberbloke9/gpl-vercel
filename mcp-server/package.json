@@ -1,0 +1,41 @@
+{
+  "name": "@gpl/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Gayatri Power Plant Data - Enables AI agents to access plant monitoring data",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "gpl-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "inspect": "npx @anthropic-ai/mcp-inspector dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "power-plant",
+    "monitoring",
+    "supabase"
+  ],
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/supabase-js": "^2.49.1",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
